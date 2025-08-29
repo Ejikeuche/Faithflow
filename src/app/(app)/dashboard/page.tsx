@@ -47,6 +47,7 @@ export default function DashboardPage() {
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [churches, setChurches] = useState<ChurchType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [memberTotalOffering, setMemberTotalOffering] = useState<number>(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -67,14 +68,23 @@ export default function DashboardPage() {
         setOfferings(offeringsData);
         setAttendanceRecords(attendanceData);
         setChurches(churchesData);
+
+        if (user?.role === 'member' && user.email) {
+            const memberOfferings = offeringsData.filter(o => o.email === user.email);
+            const total = memberOfferings.reduce((acc, o) => acc + o.amount, 0);
+            setMemberTotalOffering(total);
+        }
+
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchData();
-  }, []);
+    if (user) {
+        fetchData();
+    }
+  }, [user]);
 
   const totalMembersAdmin = members.length;
   const totalOfferingAdmin = offerings.reduce((acc, o) => acc + o.amount, 0);
@@ -185,8 +195,8 @@ export default function DashboardPage() {
                     <HandCoins className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">$1,250.00</div>
-                    <p className="text-xs text-muted-foreground">Thank you for your generosity! (Demo)</p>
+                    <div className="text-2xl font-bold">${memberTotalOffering.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    <p className="text-xs text-muted-foreground">Thank you for your generosity!</p>
                 </CardContent>
             </Card>
         )}
@@ -316,7 +326,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
-
-    
