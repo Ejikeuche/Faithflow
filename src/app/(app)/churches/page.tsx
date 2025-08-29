@@ -24,7 +24,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,7 +35,7 @@ import type { Church } from "@/lib/types";
 import { getChurches, addChurch, updateChurch } from "@/actions/church-actions";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const emptyChurch: Omit<Church, 'id'> = {
+const emptyChurch: Omit<Church, 'id' | 'createdAt'> = {
   name: "",
   location: "",
   members: 0,
@@ -57,12 +56,18 @@ export default function ChurchesPage() {
   useEffect(() => {
     const fetchChurches = async () => {
       setIsLoading(true);
-      const fetchedChurches = await getChurches();
-      setChurches(fetchedChurches);
-      setIsLoading(false);
+      try {
+        const fetchedChurches = await getChurches();
+        setChurches(fetchedChurches);
+      } catch (error) {
+        console.error("Failed to fetch churches:", error);
+        toast({ title: "Error", description: "Could not fetch churches.", variant: "destructive" });
+      } finally {
+        setIsLoading(false);
+      }
     };
     fetchChurches();
-  }, []);
+  }, [toast]);
 
   const handleAddClick = () => {
     setSelectedChurch(emptyChurch);
@@ -83,13 +88,13 @@ export default function ChurchesPage() {
     try {
       if (selectedChurch.id) {
         // Editing existing church
-        const updatedChurch = await updateChurch(selectedChurch as Church);
+        const updatedChurch = await updateChurch(selectedChurch as Omit<Church, 'createdAt'>);
         setChurches(churches.map(c => c.id === updatedChurch.id ? updatedChurch : c));
         toast({ title: "Church Updated", description: `${updatedChurch.name} has been updated.` });
       } else {
         // Adding new church
-        const newChurch = await addChurch(selectedChurch as Omit<Church, 'id'>);
-        setChurches([...churches, newChurch]);
+        const newChurch = await addChurch(selectedChurch as Omit<Church, 'id' | 'createdAt'>);
+        setChurches([newChurch, ...churches]);
         toast({ title: "Church Added", description: `${newChurch.name} has been added.` });
       }
       setIsDialogOpen(false);
@@ -100,7 +105,7 @@ export default function ChurchesPage() {
     }
   };
 
-  const handleFieldChange = (field: keyof Omit<Church, 'id' | 'members' | 'status'>, value: string) => {
+  const handleFieldChange = (field: keyof Omit<Church, 'id' | 'members' | 'status' | 'createdAt'>, value: string) => {
     if (selectedChurch) {
         setSelectedChurch(prev => prev ? { ...prev, [field]: value } : null);
     }

@@ -26,6 +26,7 @@ export interface Church {
   email?: string;
   phone?: string;
   website?: string;
+  createdAt: string;
 }
 
 export interface Plan {
