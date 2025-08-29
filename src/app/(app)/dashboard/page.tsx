@@ -70,20 +70,22 @@ export default function DashboardPage() {
         <p className="text-muted-foreground">An overview of your church community.</p>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Members</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {user?.role === 'superuser' ? totalMembersSuperuser.toLocaleString() : '1,234'}
-            </div>
-             <p className="text-xs text-muted-foreground">
-              {user?.role === 'superuser' ? 'Across all churches' : '+20.1% from last month'}
-            </p>
-          </CardContent>
-        </Card>
+        {user?.role !== 'member' && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Members</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {user?.role === 'superuser' ? totalMembersSuperuser.toLocaleString() : '1,234'}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {user?.role === 'superuser' ? 'Across all churches' : '+20.1% from last month'}
+              </p>
+            </CardContent>
+          </Card>
+        )}
         {user?.role === 'admin' && (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
