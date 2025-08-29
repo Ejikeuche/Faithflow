@@ -31,25 +31,29 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { format } from "date-fns";
 
 const initialLessons: SundaySchoolLesson[] = [
   {
     id: "1",
     title: "The Story of Creation",
     description: "Genesis 1-2. A look at the beginning of the world.",
-    content: "In the beginning, God created the heavens and the earth... The lesson will explore the seven days of creation and the significance of God's work. We will discuss the concepts of creation ex nihilo (out of nothing) and the role of humanity as stewards of creation."
+    content: "In the beginning, God created the heavens and the earth... The lesson will explore the seven days of creation and the significance of God's work. We will discuss the concepts of creation ex nihilo (out of nothing) and the role of humanity as stewards of creation.",
+    date: "2024-07-21"
   },
   {
     id: "2",
     title: "The Faith of Abraham",
     description: "Genesis 12, 15, 22. Understanding faith and promises.",
-    content: "This lesson follows the journey of Abraham, from his call to leave his home to the ultimate test of his faith. We will examine the covenant God made with Abraham and how his story is a cornerstone of faith for millions."
+    content: "This lesson follows the journey of Abraham, from his call to leave his home to the ultimate test of his faith. We will examine the covenant God made with Abraham and how his story is a cornerstone of faith for millions.",
+    date: "2024-07-28"
   },
   {
     id: "3",
     title: "The Sermon on the Mount",
     description: "Matthew 5-7. The core teachings of Jesus.",
-    content: "An in-depth study of one of the most famous sermons ever given. We will break down the Beatitudes, the Lord's Prayer, and Jesus' teachings on anger, lust, prayer, and judging others. The focus will be on practical application in daily life."
+    content: "An in-depth study of one of the most famous sermons ever given. We will break down the Beatitudes, the Lord's Prayer, and Jesus' teachings on anger, lust, prayer, and judging others. The focus will be on practical application in daily life.",
+    date: "2024-08-04"
   },
 ];
 
@@ -66,7 +70,7 @@ export default function SundaySchoolPage() {
   };
 
   const handleCreateClick = () => {
-    setSelectedLesson({ id: ``, title: "", description: "", content: "" });
+    setSelectedLesson({ id: ``, title: "", description: "", content: "", date: new Date().toISOString().split('T')[0] });
     setIsCreating(true);
   }
 
@@ -112,6 +116,9 @@ export default function SundaySchoolPage() {
             <CardHeader>
               <CardTitle>{lesson.title}</CardTitle>
               <CardDescription>{lesson.description}</CardDescription>
+               <CardDescription className="pt-2 text-xs text-muted-foreground">
+                {format(new Date(lesson.date), "MMMM d, yyyy")}
+              </CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
               <p className="text-sm text-muted-foreground line-clamp-3">{lesson.content}</p>
@@ -152,6 +159,18 @@ export default function SundaySchoolPage() {
                   id="lesson-description"
                   value={selectedLesson.description}
                   onChange={(e) => handleFieldChange("description", e.target.value)}
+                  className="col-span-3"
+                />
+              </div>
+               <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="lesson-date" className="text-right">
+                  Date
+                </Label>
+                <Input
+                  id="lesson-date"
+                  type="date"
+                  value={selectedLesson.date}
+                  onChange={(e) => handleFieldChange("date", e.target.value)}
                   className="col-span-3"
                 />
               </div>
@@ -200,6 +219,7 @@ export default function SundaySchoolPage() {
                                 <div className="text-left">
                                     <h3 className="font-semibold">{lesson.title}</h3>
                                     <p className="text-sm text-muted-foreground">{lesson.description}</p>
+                                    <p className="pt-2 text-xs text-muted-foreground">{format(new Date(lesson.date), "MMMM d, yyyy")}</p>
                                 </div>
                             </AccordionTrigger>
                             <AccordionContent className="prose prose-sm max-w-none text-muted-foreground">

@@ -37,4 +37,5 @@ export interface SundaySchoolLesson {
     title: string;
     description: string;
     content: string;
+    date: string;
 }
