@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -62,7 +61,7 @@ export default function SundaySchoolPage() {
   const [lessons, setLessons] = useState<SundaySchoolLesson[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedLesson, setSelectedLesson] = useState<EditableLesson>(emptyLesson);
+  const [selectedLesson, setSelectedLesson] = useState<EditableLesson | null>(null);
 
   useEffect(() => {
     const fetchLessons = async () => {
@@ -81,7 +80,7 @@ export default function SundaySchoolPage() {
   }, [toast]);
 
   const handleCreateClick = () => {
-    setSelectedLesson(emptyLesson);
+    setSelectedLesson({ ...emptyLesson });
     setIsDialogOpen(true);
   };
 
@@ -103,7 +102,7 @@ export default function SundaySchoolPage() {
   }
 
   const handleSave = async () => {
-    if (!selectedLesson.title || !selectedLesson.content) {
+    if (!selectedLesson || !selectedLesson.title || !selectedLesson.content) {
       toast({ title: "Error", description: "Title and content are required.", variant: "destructive" });
       return;
     }
@@ -126,13 +125,13 @@ export default function SundaySchoolPage() {
   };
 
   const handleFieldChange = (field: keyof Omit<SundaySchoolLesson, 'id' | 'createdAt'>, value: string) => {
-    setSelectedLesson(prev => ({ ...prev, [field]: value }));
+    setSelectedLesson(prev => prev ? { ...prev, [field]: value } : null);
   };
   
   const handleOpenChange = (open: boolean) => {
     setIsDialogOpen(open);
     if (!open) {
-      setSelectedLesson(emptyLesson);
+      setSelectedLesson(null);
     }
   }
 
@@ -212,58 +211,60 @@ export default function SundaySchoolPage() {
       <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-[625px]">
           <DialogHeader>
-            <DialogTitle>{'id' in selectedLesson ? 'Edit Lesson' : 'Create New Lesson'}</DialogTitle>
+            <DialogTitle>{selectedLesson && 'id' in selectedLesson ? 'Edit Lesson' : 'Create New Lesson'}</DialogTitle>
             <DialogDescription>
-              {'id' in selectedLesson ? `Update the details for the ${selectedLesson?.title} lesson.` : 'Fill in the details for the new lesson.'}
+              {selectedLesson && 'id' in selectedLesson ? `Update the details for the ${selectedLesson?.title} lesson.` : 'Fill in the details for the new lesson.'}
             </DialogDescription>
           </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="lesson-title" className="text-right">
-                  Title
-                </Label>
-                <Input
-                  id="lesson-title"
-                  value={selectedLesson.title}
-                  onChange={(e) => handleFieldChange("title", e.target.value)}
-                  className="col-span-3"
-                />
+            {selectedLesson && (
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="lesson-title" className="text-right">
+                    Title
+                  </Label>
+                  <Input
+                    id="lesson-title"
+                    value={selectedLesson.title}
+                    onChange={(e) => handleFieldChange("title", e.target.value)}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="lesson-description" className="text-right">
+                    Description
+                  </Label>
+                  <Input
+                    id="lesson-description"
+                    value={selectedLesson.description}
+                    onChange={(e) => handleFieldChange("description", e.target.value)}
+                    className="col-span-3"
+                  />
+                </div>
+                 <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="lesson-date" className="text-right">
+                    Date
+                  </Label>
+                  <Input
+                    id="lesson-date"
+                    type="date"
+                    value={selectedLesson.date}
+                    onChange={(e) => handleFieldChange("date", e.target.value)}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-start gap-4">
+                  <Label htmlFor="lesson-content" className="text-right pt-2">
+                    Content
+                  </Label>
+                  <Textarea
+                    id="lesson-content"
+                    value={selectedLesson.content}
+                    onChange={(e) => handleFieldChange("content", e.target.value)}
+                    className="col-span-3 min-h-[200px]"
+                  />
+                </div>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="lesson-description" className="text-right">
-                  Description
-                </Label>
-                <Input
-                  id="lesson-description"
-                  value={selectedLesson.description}
-                  onChange={(e) => handleFieldChange("description", e.target.value)}
-                  className="col-span-3"
-                />
-              </div>
-               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="lesson-date" className="text-right">
-                  Date
-                </Label>
-                <Input
-                  id="lesson-date"
-                  type="date"
-                  value={selectedLesson.date}
-                  onChange={(e) => handleFieldChange("date", e.target.value)}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-start gap-4">
-                <Label htmlFor="lesson-content" className="text-right pt-2">
-                  Content
-                </Label>
-                <Textarea
-                  id="lesson-content"
-                  value={selectedLesson.content}
-                  onChange={(e) => handleFieldChange("content", e.target.value)}
-                  className="col-span-3 min-h-[200px]"
-                />
-              </div>
-            </div>
+            )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false) }>
               Cancel
@@ -322,5 +323,3 @@ export default function SundaySchoolPage() {
   
   return user?.role === "admin" || user?.role === "superuser" ? <AdminView /> : <MemberView />;
 }
-
-    
