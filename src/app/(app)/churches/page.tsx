@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -105,7 +106,7 @@ export default function ChurchesPage() {
     }
   };
 
-  const handleFieldChange = (field: keyof Omit<Church, 'id' | 'members' | 'status' | 'createdAt'>, value: string) => {
+  const handleFieldChange = (field: keyof Omit<Church, 'id' | 'createdAt' | 'members' | 'status'>, value: string) => {
     if (selectedChurch) {
         setSelectedChurch(prev => prev ? { ...prev, [field]: value } : null);
     }
