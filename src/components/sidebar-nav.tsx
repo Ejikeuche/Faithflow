@@ -93,7 +93,7 @@ export function SidebarNav({ role }: SidebarNavProps) {
             .filter((item) => item.roles.includes(role))
             .map((item) => (
               <SidebarMenuItem key={item.href}>
-                <Link href={item.href} legacyBehavior passHref>
+                <Link href={item.href} passHref>
                   <SidebarMenuButton
                     isActive={pathname.startsWith(item.href)}
                     className="w-full justify-start"
