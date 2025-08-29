@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -18,8 +21,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useToast } from "@/hooks/use-toast";
 
-const members = [
+const initialMembers = [
     { id: "1", name: "John Doe", email: "john.d@example.com", status: "Present" },
     { id: "2", name: "Jane Smith", email: "jane.s@example.com", status: "Present" },
     { id: "3", name: "Sam Wilson", email: "sam.w@example.com", status: "Absent" },
@@ -29,7 +33,48 @@ const members = [
     { id: "7", name: "David Jones", email: "david.j@example.com", status: "Present" },
 ];
 
+type Member = typeof initialMembers[0];
+
 export default function AttendancePage() {
+    const { toast } = useToast();
+    const [members, setMembers] = useState(initialMembers);
+    const [selected, setSelected] = useState<string[]>(
+        initialMembers.filter(m => m.status === 'Present').map(m => m.id)
+    );
+
+    const handleSelectAll = (checked: boolean) => {
+        if (checked) {
+            setSelected(members.map(m => m.id));
+        } else {
+            setSelected([]);
+        }
+    };
+
+    const handleSelect = (memberId: string, checked: boolean) => {
+        if (checked) {
+            setSelected(prev => [...prev, memberId]);
+        } else {
+            setSelected(prev => prev.filter(id => id !== memberId));
+        }
+    };
+    
+    const handleSave = () => {
+        setMembers(prevMembers =>
+            prevMembers.map(member => ({
+                ...member,
+                status: selected.includes(member.id) ? 'Present' : 'Absent',
+            }))
+        );
+        toast({
+            title: "Success!",
+            description: "Attendance has been saved successfully.",
+        });
+    };
+
+    const allSelected = selected.length === members.length;
+    const isIndeterminate = selected.length > 0 && selected.length < members.length;
+
+
   return (
     <div className="space-y-8">
       <div>
@@ -47,14 +92,19 @@ export default function AttendancePage() {
                         <CardTitle>Sunday Service Attendance</CardTitle>
                         <CardDescription>Mark members who are present.</CardDescription>
                     </div>
-                    <Button>Save Attendance</Button>
+                    <Button onClick={handleSave}>Save Attendance</Button>
                 </CardHeader>
                 <CardContent>
                     <Table>
                         <TableHeader>
                         <TableRow>
                             <TableHead className="w-[50px]">
-                                <Checkbox aria-label="Select all" />
+                                <Checkbox 
+                                    aria-label="Select all"
+                                    onCheckedChange={(checked) => handleSelectAll(Boolean(checked))}
+                                    checked={allSelected}
+                                    aria-checked={isIndeterminate ? "mixed" : allSelected}
+                                 />
                             </TableHead>
                             <TableHead>Name</TableHead>
                             <TableHead>Status</TableHead>
@@ -64,7 +114,10 @@ export default function AttendancePage() {
                         {members.map((member) => (
                             <TableRow key={member.id}>
                             <TableCell>
-                                <Checkbox defaultChecked={member.status === "Present"} aria-label={`Select ${member.name}`} />
+                                <Checkbox 
+                                    checked={selected.includes(member.id)}
+                                    onCheckedChange={(checked) => handleSelect(member.id, Boolean(checked))}
+                                    aria-label={`Select ${member.name}`} />
                             </TableCell>
                             <TableCell>
                                 <div className="flex items-center gap-3">
@@ -76,7 +129,9 @@ export default function AttendancePage() {
                                 </div>
                             </TableCell>
                             <TableCell>
-                                <Badge variant={member.status === 'Present' ? 'default' : 'outline'}>{member.status}</Badge>
+                                <Badge variant={selected.includes(member.id) ? 'default' : 'outline'}>
+                                    {selected.includes(member.id) ? 'Present' : 'Absent'}
+                                </Badge>
                             </TableCell>
                             </TableRow>
                         ))}

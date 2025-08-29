@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -28,15 +31,88 @@ import { Label } from "@/components/ui/label";
 import { MoreHorizontal, PlusCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast";
 
-const churches = [
+type Church = {
+  id: string;
+  name: string;
+  location: string;
+  members: number;
+  status: "Active" | "Inactive";
+  pastor?: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+};
+
+const initialChurches: Church[] = [
   { id: "1", name: "First Community Church", location: "Springfield, IL", members: 1234, status: "Active" },
   { id: "2", name: "Grace Chapel", location: "Oakville, ON", members: 852, status: "Active" },
   { id: "3", name: "New Hope Fellowship", location: "London, UK", members: 450, status: "Inactive" },
   { id: "4", name: "Redemption Hill", location: "Cape Town, SA", members: 2100, status: "Active" },
 ];
 
+const emptyChurch: Church = {
+  id: "",
+  name: "",
+  location: "",
+  members: 0,
+  status: "Active",
+  pastor: "",
+  email: "",
+  phone: "",
+  website: ""
+};
+
 export default function ChurchesPage() {
+  const { toast } = useToast();
+  const [churches, setChurches] = useState(initialChurches);
+  const [selectedChurch, setSelectedChurch] = useState<Church | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const handleAddClick = () => {
+    setSelectedChurch(emptyChurch);
+    setIsDialogOpen(true);
+  };
+
+  const handleEditClick = (church: Church) => {
+    setSelectedChurch(church);
+    setIsDialogOpen(true);
+  };
+
+  const handleSave = () => {
+    if (!selectedChurch?.name) {
+        toast({ title: "Error", description: "Church name is required.", variant: "destructive" });
+        return;
+    }
+
+    if (selectedChurch.id) {
+      // Editing existing church
+      setChurches(churches.map(c => c.id === selectedChurch.id ? selectedChurch : c));
+      toast({ title: "Church Updated", description: `${selectedChurch.name} has been updated.` });
+    } else {
+      // Adding new church
+      const newChurch = { ...selectedChurch, id: (churches.length + 1).toString() };
+      setChurches([...churches, newChurch]);
+      toast({ title: "Church Added", description: `${newChurch.name} has been added.` });
+    }
+    setIsDialogOpen(false);
+    setSelectedChurch(null);
+  };
+
+  const handleFieldChange = (field: keyof Omit<Church, 'id' | 'members'>, value: string) => {
+    if (selectedChurch) {
+        setSelectedChurch(prev => prev ? { ...prev, [field]: value } : null);
+    }
+  };
+  
+  const handleViewDetails = (church: Church) => {
+      toast({
+          title: `Details for ${church.name}`,
+          description: `Location: ${church.location}, Members: ${church.members.toLocaleString()}`
+      })
+  }
+
   return (
     <div className="space-y-8">
        <div>
@@ -49,49 +125,10 @@ export default function ChurchesPage() {
                 <CardTitle>Churches</CardTitle>
                 <CardDescription>A list of all registered churches.</CardDescription>
             </div>
-            <Dialog>
-                <DialogTrigger asChild>
-                    <Button size="sm" className="gap-1">
-                        <PlusCircle className="h-4 w-4" />
-                        Add Church
-                    </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle>Add New Church</DialogTitle>
-                        <DialogDescription>Fill in the details for the new church. Click save when you're done.</DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="name" className="text-right">Name</Label>
-                            <Input id="name" placeholder="Sanctuary of Grace" className="col-span-3" />
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="location" className="text-right">Location</Label>
-                            <Input id="location" placeholder="New York, NY" className="col-span-3" />
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="pastor" className="text-right">Pastor</Label>
-                            <Input id="pastor" placeholder="Rev. Dr. Martin Luther King Jr." className="col-span-3" />
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="email" className="text-right">Email</Label>
-                            <Input id="email" type="email" placeholder="pastor@example.com" className="col-span-3" />
-                        </div>
-                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="phone" className="text-right">Phone</Label>
-                            <Input id="phone" type="tel" placeholder="(123) 456-7890" className="col-span-3" />
-                        </div>
-                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="website" className="text-right">Website</Label>
-                            <Input id="website" type="url" placeholder="https://example.com" className="col-span-3" />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button type="submit">Save Church</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <Button size="sm" className="gap-1" onClick={handleAddClick}>
+                <PlusCircle className="h-4 w-4" />
+                Add Church
+            </Button>
         </CardHeader>
         <CardContent>
           <Table>
@@ -123,8 +160,8 @@ export default function ChurchesPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem>Edit</DropdownMenuItem>
-                        <DropdownMenuItem>View Details</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEditClick(church)}>Edit</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleViewDetails(church)}>View Details</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -134,6 +171,47 @@ export default function ChurchesPage() {
           </Table>
         </CardContent>
       </Card>
+      
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                  <DialogTitle>{selectedChurch?.id ? 'Edit Church' : 'Add New Church'}</DialogTitle>
+                  <DialogDescription>
+                      {selectedChurch?.id ? 'Update the details for this church.' : 'Fill in the details for the new church.'} Click save when you're done.
+                  </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="name" className="text-right">Name</Label>
+                      <Input id="name" value={selectedChurch?.name} onChange={e => handleFieldChange('name', e.target.value)} placeholder="Sanctuary of Grace" className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="location" className="text-right">Location</Label>
+                      <Input id="location" value={selectedChurch?.location} onChange={e => handleFieldChange('location', e.target.value)} placeholder="New York, NY" className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="pastor" className="text-right">Pastor</Label>
+                      <Input id="pastor" value={selectedChurch?.pastor} onChange={e => handleFieldChange('pastor', e.target.value)} placeholder="Rev. Dr. Martin Luther King Jr." className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="email" className="text-right">Email</Label>
+                      <Input id="email" type="email" value={selectedChurch?.email} onChange={e => handleFieldChange('email', e.target.value)} placeholder="pastor@example.com" className="col-span-3" />
+                  </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="phone" className="text-right">Phone</Label>
+                      <Input id="phone" type="tel" value={selectedChurch?.phone} onChange={e => handleFieldChange('phone', e.target.value)} placeholder="(123) 456-7890" className="col-span-3" />
+                  </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="website" className="text-right">Website</Label>
+                      <Input id="website" type="url" value={selectedChurch?.website} onChange={e => handleFieldChange('website', e.target.value)} placeholder="https://example.com" className="col-span-3" />
+                  </div>
+              </div>
+              <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                  <Button type="submit" onClick={handleSave}>Save Church</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
     </div>
   );
 }
