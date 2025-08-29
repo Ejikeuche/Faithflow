@@ -16,12 +16,9 @@ import {
   Loader2,
   Upload,
   FileCheck2,
-  FileWarning,
   AlertCircle,
-  Lightbulb,
 } from "lucide-react";
 import { processOfferingFile } from "@/actions/process-offering-file";
-import type { ValidateOfferingDataOutput } from "@/ai/flows/validate-offering-data";
 import type { Offering } from "@/lib/types";
 
 interface OfferingValidatorProps {
@@ -31,7 +28,6 @@ interface OfferingValidatorProps {
 export function OfferingValidator({ onUploadSuccess }: OfferingValidatorProps) {
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [validationResult, setValidationResult] = useState<ValidateOfferingDataOutput | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,7 +35,6 @@ export function OfferingValidator({ onUploadSuccess }: OfferingValidatorProps) {
     if (selectedFile) {
       setFile(selectedFile);
       setStatus("idle");
-      setValidationResult(null);
       setError(null);
     }
   };
@@ -52,7 +47,7 @@ export function OfferingValidator({ onUploadSuccess }: OfferingValidatorProps) {
       reader.onerror = (error) => reject(error);
     });
 
-  const handleValidateAndProcess = async () => {
+  const handleProcessFile = async () => {
     if (!file) {
       setError("Please select a file first.");
       return;
@@ -69,36 +64,33 @@ export function OfferingValidator({ onUploadSuccess }: OfferingValidatorProps) {
     }
 
     setStatus("loading");
-    setValidationResult(null);
     setError(null);
 
     try {
       const fileData = await toBase64(file);
       const result = await processOfferingFile({ fileData, fileType });
       
-      setValidationResult(result.validation);
-
-      if (result.validation.isValid && result.parsedData) {
+      if (result.success && result.parsedData) {
         setStatus("success");
         onUploadSuccess(result.parsedData);
       } else {
         setStatus("error");
+        setError(result.message);
       }
     } catch (e) {
       const err =
         e instanceof Error ? e.message : "An unknown error occurred.";
       setError(err);
-      setStatus("idle");
+      setStatus("error");
     }
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>AI Offering Validator</CardTitle>
+        <CardTitle>AI Offering Parser</CardTitle>
         <CardDescription>
-          Upload a CSV or Excel file to check for consistency and potential
-          issues.
+          Upload a CSV or Excel file to add multiple offering records at once.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -111,88 +103,38 @@ export function OfferingValidator({ onUploadSuccess }: OfferingValidatorProps) {
               accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
             />
           </div>
-          <Button onClick={handleValidateAndProcess} disabled={!file || status === "loading"}>
+          <Button onClick={handleProcessFile} disabled={!file || status === "loading"}>
             {status === "loading" ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Upload className="mr-2 h-4 w-4" />
             )}
-            Validate & Process
+            Process File
           </Button>
         </div>
 
-        {error && (
+        {status === 'error' && error && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
+            <AlertTitle>Processing Failed</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
+        )}
+        
+        {status === "success" && (
+            <Alert>
+                <FileCheck2 className="h-4 w-4" />
+                <AlertTitle>Processing Successful</AlertTitle>
+                <AlertDescription>
+                  The uploaded offering data has been processed and added to the records.
+                </AlertDescription>
+              </Alert>
         )}
 
         {status === "loading" && (
           <div className="flex items-center justify-center p-8 text-muted-foreground rounded-lg bg-secondary">
             <Loader2 className="h-8 w-8 animate-spin mr-4" />
             <span>Analyzing your file with AI...</span>
-          </div>
-        )}
-
-        {validationResult && (
-          <div className="space-y-4">
-            {validationResult.isValid ? (
-              <Alert>
-                <FileCheck2 className="h-4 w-4" />
-                <AlertTitle>Validation & Processing Successful</AlertTitle>
-                <AlertDescription>
-                  The uploaded offering data has been validated and added to the records.
-                </AlertDescription>
-              </Alert>
-            ) : (
-              <Alert variant="destructive">
-                <FileWarning className="h-4 w-4" />
-                <AlertTitle>Validation Issues Found</AlertTitle>
-                <AlertDescription>
-                  The AI found potential issues with your file. Records were not added. Please review the
-                  errors and suggestions below, correct the file, and try again.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {validationResult.errors && validationResult.errors.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="h-5 w-5 text-destructive" />
-                    <CardTitle className="text-lg">Identified Errors</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <ul className="list-disc space-y-1 pl-5 text-sm">
-                    {validationResult.errors.map((err, index) => (
-                      <li key={index}>{err}</li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            )}
-
-            {validationResult.suggestions &&
-              validationResult.suggestions.length > 0 && (
-                <Card className="bg-accent/20 border-accent/50">
-                  <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <Lightbulb className="h-5 w-5 text-accent-foreground" />
-                      <CardTitle className="text-lg">AI Suggestions</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="list-disc space-y-1 pl-5 text-sm">
-                      {validationResult.suggestions.map((sug, index) => (
-                        <li key={index}>{sug}</li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              )}
           </div>
         )}
       </CardContent>
