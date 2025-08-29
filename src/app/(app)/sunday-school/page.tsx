@@ -94,6 +94,11 @@ export default function SundaySchoolPage() {
       setSelectedLesson({ ...selectedLesson, [field]: value });
     }
   };
+
+  const isValidDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date instanceof Date && !isNaN(date.getTime());
+  }
   
   const AdminView = () => (
     <div className="space-y-8">
@@ -117,7 +122,7 @@ export default function SundaySchoolPage() {
               <CardTitle>{lesson.title}</CardTitle>
               <CardDescription>{lesson.description}</CardDescription>
                <CardDescription className="pt-2 text-xs text-muted-foreground">
-                {format(new Date(lesson.date), "MMMM d, yyyy")}
+                {isValidDate(lesson.date) ? format(new Date(lesson.date), "MMMM d, yyyy") : 'No date'}
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
@@ -219,7 +224,7 @@ export default function SundaySchoolPage() {
                                 <div className="text-left">
                                     <h3 className="font-semibold">{lesson.title}</h3>
                                     <p className="text-sm text-muted-foreground">{lesson.description}</p>
-                                    <p className="pt-2 text-xs text-muted-foreground">{format(new Date(lesson.date), "MMMM d, yyyy")}</p>
+                                    <p className="pt-2 text-xs text-muted-foreground">{isValidDate(lesson.date) ? format(new Date(lesson.date), "MMMM d, yyyy") : 'No date'}</p>
                                 </div>
                             </AccordionTrigger>
                             <AccordionContent className="prose prose-sm max-w-none text-muted-foreground">
