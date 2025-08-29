@@ -1,56 +1,38 @@
 
 "use client"
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, HandCoins, Church, UserCheck } from "lucide-react";
 import Image from "next/image";
-import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
-
+import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
-} from "@/components/ui/chart"
+} from "@/components/ui/chart";
 import { useUser } from "@/hooks/use-user";
-
-const offeringData = [
-  { month: "January", total: 12345 },
-  { month: "February", total: 15678 },
-  { month: "March", total: 18901 },
-  { month: "April", total: 17532 },
-  { month: "May", total: 20145 },
-  { month: "June", total: 22876 },
-];
+import { getMembers } from "@/actions/member-actions";
+import { getOfferings } from "@/actions/offering-actions";
+import { getAttendanceRecords } from "@/actions/attendance-actions";
+import { getChurches } from "@/actions/church-actions";
+import type { Member, Offering, AttendanceRecord, Church as ChurchType } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
+import { subMonths, format, startOfMonth } from 'date-fns';
 
 const offeringChartConfig = {
   total: {
     label: "Total Offering",
   },
-} satisfies ChartConfig
-
-const attendanceData = [
-  { month: "January", average: 650 },
-  { month: "February", average: 700 },
-  { month: "March", average: 750 },
-  { month: "April", average: 720 },
-  { month: "May", average: 800 },
-  { month: "June", average: 852 },
-];
+} satisfies ChartConfig;
 
 const attendanceChartConfig = {
   average: {
     label: "Average Attendance",
     color: "hsl(var(--primary))",
   },
-} satisfies ChartConfig
-
-const churchMembershipData = [
-    { name: "First Community", members: 1234 },
-    { name: "Grace Chapel", members: 852 },
-    { name: "New Hope", members: 450 },
-    { name: "Redemption Hill", members: 2100 },
-];
+} satisfies ChartConfig;
 
 const churchMembershipChartConfig = {
     members: {
@@ -58,11 +40,103 @@ const churchMembershipChartConfig = {
     },
 } satisfies ChartConfig;
 
-const totalMembersSuperuser = churchMembershipData.reduce((acc, church) => acc + church.members, 0);
-
-
 export default function DashboardPage() {
   const { user } = useUser();
+  const [members, setMembers] = useState<Member[]>([]);
+  const [offerings, setOfferings] = useState<Offering[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [churches, setChurches] = useState<ChurchType[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const [
+          membersData,
+          offeringsData,
+          attendanceData,
+          churchesData,
+        ] = await Promise.all([
+          getMembers(),
+          getOfferings(),
+          getAttendanceRecords(),
+          getChurches(),
+        ]);
+        setMembers(membersData);
+        setOfferings(offeringsData);
+        setAttendanceRecords(attendanceData);
+        setChurches(churchesData);
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const totalMembersAdmin = members.length;
+  const totalOfferingAdmin = offerings.reduce((acc, o) => acc + o.amount, 0);
+  const averageAttendanceAdmin = attendanceRecords.length > 0
+      ? Math.round(attendanceRecords.reduce((acc, r) => acc + r.total, 0) / attendanceRecords.length)
+      : 0;
+      
+  const totalMembersSuperuser = churches.reduce((acc, church) => acc + church.members, 0);
+
+  const processChartData = () => {
+    const now = new Date();
+    const monthlyData: { [key: string]: { offering: number; attendance: number; attendanceCount: number } } = {};
+
+    for (let i = 5; i >= 0; i--) {
+        const monthDate = subMonths(now, i);
+        const monthKey = format(monthDate, 'yyyy-MM');
+        monthlyData[monthKey] = { offering: 0, attendance: 0, attendanceCount: 0 };
+    }
+
+    offerings.forEach(o => {
+        const recordDate = new Date(o.date);
+        const monthKey = format(recordDate, 'yyyy-MM');
+        if (monthlyData[monthKey]) {
+            monthlyData[monthKey].offering += o.amount;
+        }
+    });
+
+    attendanceRecords.forEach(r => {
+        const recordDate = new Date(r.date);
+        const monthKey = format(recordDate, 'yyyy-MM');
+        if (monthlyData[monthKey]) {
+            monthlyData[monthKey].attendance += r.total;
+            monthlyData[monthKey].attendanceCount += 1;
+        }
+    });
+
+    return Object.entries(monthlyData).map(([key, value]) => ({
+      month: format(startOfMonth(new Date(key)), 'MMMM'),
+      total: value.offering,
+      average: value.attendanceCount > 0 ? Math.round(value.attendance / value.attendanceCount) : 0,
+    }));
+  };
+
+  const chartData = processChartData();
+
+  if (isLoading) {
+    return (
+      <div className="space-y-8">
+         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+           <Skeleton className="h-28 w-full" />
+           <Skeleton className="h-28 w-full" />
+           <Skeleton className="h-28 w-full" />
+           <Skeleton className="h-28 w-full" />
+         </div>
+         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+            <Skeleton className="h-80 w-full" />
+            <Skeleton className="h-80 w-full" />
+         </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -70,33 +144,39 @@ export default function DashboardPage() {
         <p className="text-muted-foreground">An overview of your church community.</p>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {user?.role !== 'member' && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Members</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {user?.role === 'superuser' ? totalMembersSuperuser.toLocaleString() : '1,234'}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {user?.role === 'superuser' ? 'Across all churches' : '+20.1% from last month'}
-              </p>
-            </CardContent>
-          </Card>
-        )}
         {user?.role === 'admin' && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Offering</CardTitle>
-              <HandCoins className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">$45,231.89</div>
-              <p className="text-xs text-muted-foreground">+180.1% from last month</p>
-            </CardContent>
-          </Card>
+          <>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Members</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{totalMembersAdmin.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">Current members in this church</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Offering</CardTitle>
+                <HandCoins className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">${totalOfferingAdmin.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <p className="text-xs text-muted-foreground">All-time total recorded</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Avg. Attendance</CardTitle>
+                <UserCheck className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{averageAttendanceAdmin.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">Average across all services</p>
+              </CardContent>
+            </Card>
+          </>
         )}
         {user?.role === 'member' && (
             <Card>
@@ -106,33 +186,33 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">$1,250.00</div>
-                    <p className="text-xs text-muted-foreground">Thank you for your generosity!</p>
+                    <p className="text-xs text-muted-foreground">Thank you for your generosity! (Demo)</p>
                 </CardContent>
             </Card>
         )}
-        {user?.role !== 'member' && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg. Attendance</CardTitle>
-              <UserCheck className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">852</div>
-              <p className="text-xs text-muted-foreground">+19% from last month</p>
-            </CardContent>
-          </Card>
-        )}
-        {user?.role === 'superuser' && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Churches Managed</CardTitle>
-            <Church className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">4</div>
-            <p className="text-xs text-muted-foreground">Superuser view</p>
-          </CardContent>
-        </Card>
+         {user?.role === 'superuser' && (
+           <>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Members</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{totalMembersSuperuser.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">Across all churches</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Churches Managed</CardTitle>
+                <Church className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{churches.length}</div>
+                <p className="text-xs text-muted-foreground">Total registered churches</p>
+              </CardContent>
+            </Card>
+           </>
         )}
       </div>
 
@@ -145,7 +225,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <ChartContainer config={offeringChartConfig} className="h-[250px] w-full">
-                <BarChart accessibilityLayer data={offeringData}>
+                <BarChart accessibilityLayer data={chartData}>
                   <CartesianGrid vertical={false} />
                   <XAxis
                     dataKey="month"
@@ -170,14 +250,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <ChartContainer config={attendanceChartConfig} className="h-[250px] w-full">
-                  <LineChart
-                    accessibilityLayer
-                    data={attendanceData}
-                    margin={{
-                      left: 12,
-                      right: 12,
-                    }}
-                  >
+                <BarChart accessibilityLayer data={chartData}>
                     <CartesianGrid vertical={false} />
                     <XAxis
                       dataKey="month"
@@ -188,22 +261,19 @@ export default function DashboardPage() {
                     />
                     <ChartTooltip
                       cursor={false}
-                      content={<ChartTooltipContent hideLabel />}
+                      content={<ChartTooltipContent indicator="dot" />}
                     />
-                    <Line
+                    <Bar
                       dataKey="average"
-                      type="natural"
-                      stroke="hsl(var(--primary))"
-                      strokeWidth={2}
-                      dot={false}
+                      fill="hsl(var(--primary))"
+                      radius={4}
                     />
-                  </LineChart>
+                  </BarChart>
                 </ChartContainer>
             </CardContent>
           </Card>
         </div>
       )}
-
 
        {user?.role === "superuser" && (
         <div className="grid grid-cols-1 gap-8">
@@ -214,10 +284,10 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                     <ChartContainer config={churchMembershipChartConfig} className="h-[350px] w-full">
-                        <BarChart accessibilityLayer data={churchMembershipData} layout="vertical" margin={{ left: 10 }}>
+                        <BarChart accessibilityLayer data={churches} layout="vertical" margin={{ left: 10 }}>
                             <CartesianGrid horizontal={false} />
-                            <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={10} />
                             <XAxis dataKey="members" type="number" hide />
+                            <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={10} width={120} />
                             <ChartTooltip
                                 cursor={false}
                                 content={<ChartTooltipContent indicator="dot" />}
@@ -246,3 +316,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
