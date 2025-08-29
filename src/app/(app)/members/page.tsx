@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,28 +46,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { format, isValid } from "date-fns";
+import type { Member } from "@/lib/types";
+import { getMembers, addMember, updateMember, deleteMember } from "@/actions/member-actions";
+import { Skeleton } from "@/components/ui/skeleton";
 
-
-type Member = {
-  id: string;
-  name: string;
-  email: string;
-  role: "Admin" | "Member";
-  joined: string;
-  phone?: string;
-  address?: string;
-};
-
-const initialMembers: Member[] = [
-    { id: "1", name: "John Doe", email: "john.d@example.com", role: "Admin", joined: "2023-01-15" },
-    { id: "2", name: "Jane Smith", email: "jane.s@example.com", role: "Member", joined: "2023-02-20" },
-    { id: "3", name: "Sam Wilson", email: "sam.w@example.com", role: "Member", joined: "2022-11-10" },
-    { id: "4", name: "Emily Brown", email: "emily.b@example.com", role: "Member", joined: "2023-05-01" },
-    { id: "5", name: "Michael Johnson", email: "michael.j@example.com", role: "Member", joined: "2021-08-23" },
-];
-
-const emptyMember: Member = {
-    id: "",
+const emptyMember: Omit<Member, 'id' | 'createdAt'> = {
     name: "",
     email: "",
     role: "Member",
@@ -78,9 +61,27 @@ const emptyMember: Member = {
 
 export default function MembersPage() {
     const { toast } = useToast();
-    const [members, setMembers] = useState(initialMembers);
-    const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+    const [members, setMembers] = useState<Member[]>([]);
+    const [selectedMember, setSelectedMember] = useState<Omit<Member, 'createdAt'> | Omit<Member, 'id' | 'createdAt'> | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+      const fetchMembers = async () => {
+        setIsLoading(true);
+        try {
+          const fetchedMembers = await getMembers();
+          setMembers(fetchedMembers);
+        } catch (error) {
+          console.error("Failed to fetch members:", error);
+          toast({ title: "Error", description: "Could not fetch members.", variant: "destructive" });
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchMembers();
+    }, [toast]);
+
 
     const handleAddClick = () => {
         setSelectedMember(emptyMember);
@@ -92,34 +93,60 @@ export default function MembersPage() {
         setIsDialogOpen(true);
     };
     
-    const handleDelete = (memberId: string) => {
-        setMembers(members.filter(m => m.id !== memberId));
-        toast({ title: "Member Deleted", description: "The member has been removed from the list." });
+    const handleDelete = async (memberId: string) => {
+        try {
+            await deleteMember(memberId);
+            setMembers(members.filter(m => m.id !== memberId));
+            toast({ title: "Member Deleted", description: "The member has been removed from the list." });
+        } catch(error) {
+            console.error("Failed to delete member:", error);
+            toast({ title: "Error", description: "Could not delete member. Please try again.", variant: "destructive" });
+        }
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!selectedMember?.name || !selectedMember?.email) {
             toast({ title: "Error", description: "Name and email are required.", variant: "destructive" });
             return;
         }
 
-        if (selectedMember.id) {
-            setMembers(members.map(m => m.id === selectedMember.id ? selectedMember : m));
-            toast({ title: "Member Updated", description: `${selectedMember.name}'s details have been updated.` });
-        } else {
-            const newMember = { ...selectedMember, id: (members.length + 1).toString() };
-            setMembers([...members, newMember]);
-            toast({ title: "Member Added", description: `${newMember.name} has been added.` });
+        try {
+            if ('id' in selectedMember && selectedMember.id) {
+                // Editing existing member
+                const updated = await updateMember(selectedMember as Omit<Member, 'createdAt'>);
+                setMembers(members.map(m => m.id === updated.id ? updated : m));
+                toast({ title: "Member Updated", description: `${updated.name}'s details have been updated.` });
+            } else {
+                // Adding new member
+                const newMember = await addMember(selectedMember as Omit<Member, 'id' | 'createdAt'>);
+                setMembers([newMember, ...members]);
+                toast({ title: "Member Added", description: `${newMember.name} has been added.` });
+            }
+            setIsDialogOpen(false);
+            setSelectedMember(null);
+        } catch (error) {
+            toast({ title: "Error", description: "Could not save member. Please try again.", variant: "destructive" });
+            console.error("Failed to save member:", error);
         }
-        setIsDialogOpen(false);
-        setSelectedMember(null);
     };
 
-    const handleFieldChange = (field: keyof Omit<Member, 'id' | 'joined'>, value: string) => {
-        if (selectedMember) {
-            setSelectedMember(prev => prev ? { ...prev, [field]: value } : null);
-        }
+    const handleFieldChange = (field: keyof Omit<Member, 'id' | 'createdAt' | 'joined'>, value: string) => {
+      if (selectedMember) {
+        setSelectedMember(prev => {
+          if (!prev) return null;
+          // Create a new object to ensure re-render
+          const newDetails = { ...prev };
+          (newDetails as any)[field] = value;
+          return newDetails;
+        });
+      }
     };
+    
+    const handleJoinedDateChange = (value: string) => {
+       if (selectedMember) {
+            setSelectedMember(prev => prev ? { ...prev, joined: value } : null);
+        }
+    }
     
     const parseDate = (dateString: string) => {
         const [year, month, day] = dateString.split('-').map(Number);
@@ -152,103 +179,115 @@ export default function MembersPage() {
             </Button>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead className="hidden md:table-cell">Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead className="hidden md:table-cell">Joined Date</TableHead>
-                <TableHead>
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {members.map((member) => {
-                const joinedDate = parseDate(member.joined);
-                return(
-                <TableRow key={member.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                         <Avatar>
-                            <AvatarImage src={`https://avatar.vercel.sh/${member.email}.png`} alt={member.name} />
-                            <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div className="font-medium">{member.name}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">{member.email}</TableCell>
-                  <TableCell>
-                    <Badge variant={member.role === "Admin" ? "destructive" : "secondary"}>
-                      {member.role}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {isValid(joinedDate) ? format(joinedDate, "PPP") : 'Invalid Date'}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button aria-haspopup="true" size="icon" variant="ghost">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => handleEditClick(member)}>Edit</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleViewProfile(member)}>View Profile</DropdownMenuItem>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">Delete</DropdownMenuItem>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete the member's account
-                                and remove their data from our servers.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(member.id)}>Continue</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead className="hidden md:table-cell">Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead className="hidden md:table-cell">Joined Date</TableHead>
+                  <TableHead>
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
                 </TableRow>
-              )})}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {members.map((member) => {
+                  const joinedDate = parseDate(member.joined);
+                  return(
+                  <TableRow key={member.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                           <Avatar>
+                              <AvatarImage src={`https://avatar.vercel.sh/${member.email}.png`} alt={member.name} />
+                              <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div className="font-medium">{member.name}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">{member.email}</TableCell>
+                    <TableCell>
+                      <Badge variant={member.role === "Admin" ? "destructive" : "secondary"}>
+                        {member.role}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {isValid(joinedDate) ? format(joinedDate, "PPP") : 'Invalid Date'}
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => handleEditClick(member)}>Edit</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleViewProfile(member)}>View Profile</DropdownMenuItem>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">Delete</DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will permanently delete the member's account
+                                  and remove their data from our servers.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(member.id)}>Continue</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                )})}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                  <DialogTitle>{selectedMember?.id ? 'Edit Member' : 'Add New Member'}</DialogTitle>
-                  <DialogDescription>{selectedMember?.id ? 'Update member details.' : 'Fill in the details for the new member.'}</DialogDescription>
+                  <DialogTitle>{selectedMember && 'id' in selectedMember ? 'Edit Member' : 'Add New Member'}</DialogTitle>
+                  <DialogDescription>{selectedMember && 'id' in selectedMember ? 'Update member details.' : 'Fill in the details for the new member.'}</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="name" className="text-right">Name</Label>
-                      <Input id="name" value={selectedMember?.name} onChange={e => handleFieldChange('name', e.target.value)} placeholder="Peter Jones" className="col-span-3" />
+                      <Input id="name" value={selectedMember?.name || ''} onChange={e => handleFieldChange('name', e.target.value)} placeholder="Peter Jones" className="col-span-3" />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="email" className="text-right">Email</Label>
-                      <Input id="email" type="email" value={selectedMember?.email} onChange={e => handleFieldChange('email', e.target.value)} placeholder="peter.j@example.com" className="col-span-3" />
+                      <Input id="email" type="email" value={selectedMember?.email || ''} onChange={e => handleFieldChange('email', e.target.value)} placeholder="peter.j@example.com" className="col-span-3" />
+                  </div>
+                   <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="joined" className="text-right">Joined</Label>
+                      <Input id="joined" type="date" value={selectedMember?.joined || ''} onChange={e => handleJoinedDateChange(e.target.value)} className="col-span-3" />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="phone" className="text-right">Phone</Label>
-                      <Input id="phone" type="tel" value={selectedMember?.phone} onChange={e => handleFieldChange('phone', e.target.value)} placeholder="(123) 456-7890" className="col-span-3" />
+                      <Input id="phone" type="tel" value={selectedMember?.phone || ''} onChange={e => handleFieldChange('phone', e.target.value)} placeholder="(123) 456-7890" className="col-span-3" />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="address" className="text-right">Address</Label>
-                      <Input id="address" value={selectedMember?.address} onChange={e => handleFieldChange('address', e.target.value)} placeholder="123 Main St, Anytown, USA" className="col-span-3" />
+                      <Input id="address" value={selectedMember?.address || ''} onChange={e => handleFieldChange('address', e.target.value)} placeholder="123 Main St, Anytown, USA" className="col-span-3" />
                   </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="role" className="text-right">Role</Label>

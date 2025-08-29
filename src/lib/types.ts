@@ -13,7 +13,9 @@ export interface Member {
   email: string;
   role: "Member" | "Admin"; // Admin can manage members
   joined: string; // date string
-  avatar: string;
+  phone?: string;
+  address?: string;
+  createdAt: string;
 }
 
 export interface Church {
