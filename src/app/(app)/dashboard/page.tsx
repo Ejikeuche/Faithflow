@@ -58,6 +58,8 @@ const churchMembershipChartConfig = {
     },
 } satisfies ChartConfig;
 
+const totalMembersSuperuser = churchMembershipData.reduce((acc, church) => acc + church.members, 0);
+
 
 export default function DashboardPage() {
   const { user } = useUser();
@@ -74,8 +76,12 @@ export default function DashboardPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,234</div>
-            <p className="text-xs text-muted-foreground">+20.1% from last month</p>
+            <div className="text-2xl font-bold">
+              {user?.role === 'superuser' ? totalMembersSuperuser.toLocaleString() : '1,234'}
+            </div>
+             <p className="text-xs text-muted-foreground">
+              {user?.role === 'superuser' ? 'Across all churches' : '+20.1% from last month'}
+            </p>
           </CardContent>
         </Card>
         <Card>
