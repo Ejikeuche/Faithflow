@@ -9,6 +9,7 @@ import {
   HandCoins,
   Church,
   CreditCard,
+  BookOpen,
 } from "lucide-react";
 import {
   SidebarMenu,
@@ -53,6 +54,12 @@ export function SidebarNav({ role }: SidebarNavProps) {
       label: "Offerings",
       icon: HandCoins,
       roles: ["admin", "superuser"],
+    },
+    {
+      href: "/sunday-school",
+      label: "Sunday School",
+      icon: BookOpen,
+      roles: ["admin", "superuser", "member"],
     },
     {
       href: "/plans",
