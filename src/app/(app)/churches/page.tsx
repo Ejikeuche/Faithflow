@@ -56,19 +56,35 @@ export default function ChurchesPage() {
                         Add Church
                     </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle>Add New Church</DialogTitle>
-                        <DialogDescription>Fill in the details for the new church.</DialogDescription>
+                        <DialogDescription>Fill in the details for the new church. Click save when you're done.</DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="name" className="text-right">Name</Label>
-                            <Input id="name" defaultValue="Sanctuary of Grace" className="col-span-3" />
+                            <Input id="name" placeholder="Sanctuary of Grace" className="col-span-3" />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="location" className="text-right">Location</Label>
-                            <Input id="location" defaultValue="New York, NY" className="col-span-3" />
+                            <Input id="location" placeholder="New York, NY" className="col-span-3" />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="pastor" className="text-right">Pastor</Label>
+                            <Input id="pastor" placeholder="Rev. Dr. Martin Luther King Jr." className="col-span-3" />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="email" className="text-right">Email</Label>
+                            <Input id="email" type="email" placeholder="pastor@example.com" className="col-span-3" />
+                        </div>
+                         <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="phone" className="text-right">Phone</Label>
+                            <Input id="phone" type="tel" placeholder="(123) 456-7890" className="col-span-3" />
+                        </div>
+                         <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="website" className="text-right">Website</Label>
+                            <Input id="website" type="url" placeholder="https://example.com" className="col-span-3" />
                         </div>
                     </div>
                     <DialogFooter>
