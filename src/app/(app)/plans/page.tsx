@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -27,37 +27,35 @@ import { useToast } from "@/hooks/use-toast";
 import { createCheckoutSession } from "@/actions/create-checkout-session";
 import { getStripe } from "@/lib/stripe-client";
 import { Loader2 } from "lucide-react";
-
-const initialPlans: Plan[] = [
-  {
-    id: "basic",
-    name: "Basic",
-    memberLimit: { min: 0, max: 100 },
-    price: 29,
-  },
-  {
-    id: "premium",
-    name: "Premium",
-    memberLimit: { min: 101, max: 250 },
-    price: 79,
-  },
-  {
-    id: "premium-plus",
-    name: "Premium Plus",
-    memberLimit: { min: 251, max: null },
-    price: 149,
-  },
-];
+import { getPlans, updatePlan } from "@/actions/plan-actions";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function PlansPage() {
   const { user } = useUser();
   const { toast } = useToast();
-  const [plans, setPlans] = useState<Plan[]>(initialPlans);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
   
   const currentPlanId = "basic"; // Mock current plan for demo
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+      setIsLoading(true);
+      try {
+        const fetchedPlans = await getPlans();
+        setPlans(fetchedPlans);
+      } catch (error) {
+        console.error("Failed to fetch plans:", error);
+        toast({ title: "Error", description: "Could not fetch plans.", variant: "destructive" });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchPlans();
+  }, [toast]);
 
   const handleEditClick = (plan: Plan) => {
     setSelectedPlan({ ...plan });
@@ -87,11 +85,18 @@ export default function PlansPage() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (selectedPlan) {
-      setPlans(
-        plans.map((p) => (p.id === selectedPlan.id ? selectedPlan : p))
-      );
+      try {
+        const updatedPlan = await updatePlan(selectedPlan);
+        setPlans(
+          plans.map((p) => (p.id === updatedPlan.id ? updatedPlan : p))
+        );
+        toast({ title: "Plan Saved", description: `${updatedPlan.name} has been updated.`});
+      } catch (error) {
+        toast({ title: "Error", description: "Could not save the plan.", variant: "destructive" });
+        console.error("Failed to save plan:", error);
+      }
     }
     setIsEditing(false);
     setSelectedPlan(null);
@@ -133,6 +138,22 @@ export default function PlansPage() {
     }
     return null;
   }
+  
+  if (isLoading) {
+    return (
+        <div className="space-y-8">
+            <div>
+                <Skeleton className="h-9 w-1/3" />
+                <Skeleton className="h-4 w-1/2 mt-2" />
+            </div>
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+                <Skeleton className="h-64 w-full" />
+                <Skeleton className="h-64 w-full" />
+                <Skeleton className="h-64 w-full" />
+            </div>
+        </div>
+    )
+  }
 
   return (
     <div className="space-y-8">
@@ -151,8 +172,8 @@ export default function PlansPage() {
               <CardDescription>
                 For churches with{" "}
                 {plan.memberLimit.max
-                  ? `${plan.memberLimit.min} - ${plan.memberLimit.max}`
-                  : `${plan.memberLimit.min}+`}{" "}
+                  ? `${plan.memberLimit.min.toLocaleString()} - ${plan.memberLimit.max.toLocaleString()}`
+                  : `${plan.memberLimit.min.toLocaleString()}+`}{" "}
                 members.
               </CardDescription>
             </CardHeader>
