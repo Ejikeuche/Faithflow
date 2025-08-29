@@ -4,7 +4,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, HandCoins, Church, UserCheck } from "lucide-react";
 import Image from "next/image";
-import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis } from "recharts"
+import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
 
 import {
   ChartContainer,
@@ -12,6 +12,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
+import { useUser } from "@/hooks/use-user";
 
 const offeringData = [
   { month: "January", total: 12345 },
@@ -44,8 +45,22 @@ const attendanceChartConfig = {
   },
 } satisfies ChartConfig
 
+const churchMembershipData = [
+    { name: "First Community", members: 1234 },
+    { name: "Grace Chapel", members: 852 },
+    { name: "New Hope", members: 450 },
+    { name: "Redemption Hill", members: 2100 },
+];
+
+const churchMembershipChartConfig = {
+    members: {
+        label: "Members",
+    },
+} satisfies ChartConfig;
+
 
 export default function DashboardPage() {
+  const { user } = useUser();
   return (
     <div className="space-y-8">
       <div>
@@ -89,7 +104,7 @@ export default function DashboardPage() {
             <Church className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">3</div>
+            <div className="text-2xl font-bold">4</div>
             <p className="text-xs text-muted-foreground">Superuser view</p>
           </CardContent>
         </Card>
@@ -159,6 +174,32 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+       {user?.role === "superuser" && (
+        <div className="grid grid-cols-1 gap-8">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Church Membership</CardTitle>
+                    <CardDescription>Membership numbers across all churches.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ChartContainer config={churchMembershipChartConfig} className="h-[350px] w-full">
+                        <BarChart accessibilityLayer data={churchMembershipData} layout="vertical" margin={{ left: 10 }}>
+                            <CartesianGrid horizontal={false} />
+                            <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={10} />
+                            <XAxis dataKey="members" type="number" hide />
+                            <ChartTooltip
+                                cursor={false}
+                                content={<ChartTooltipContent indicator="dot" />}
+                            />
+                            <Bar dataKey="members" layout="vertical" fill="hsl(var(--primary))" radius={4} />
+                        </BarChart>
+                    </ChartContainer>
+                </CardContent>
+            </Card>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-8">
         <Card>
           <CardHeader>
