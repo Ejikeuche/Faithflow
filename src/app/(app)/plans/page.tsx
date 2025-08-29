@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -20,19 +21,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { Plan, UserRole } from "@/lib/types";
+import type { Plan } from "@/lib/types";
 import { useUser } from "@/hooks/use-user";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { createCheckoutSession } from "@/actions/create-checkout-session";
+import { getStripe } from "@/lib/stripe-client";
+import { Loader2 } from "lucide-react";
 
 const initialPlans: Plan[] = [
   {
@@ -61,7 +55,7 @@ export default function PlansPage() {
   const [plans, setPlans] = useState<Plan[]>(initialPlans);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [isSelecting, setIsSelecting] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   
   const currentPlanId = "basic"; // Mock current plan for demo
 
@@ -70,9 +64,27 @@ export default function PlansPage() {
     setIsEditing(true);
   };
 
-  const handleSelectClick = (plan: Plan) => {
-    setSelectedPlan(plan);
-    setIsSelecting(true);
+  const handleSelectClick = async (plan: Plan) => {
+    if (user?.role !== 'admin') return;
+    
+    setIsRedirecting(true);
+    try {
+      const { sessionId } = await createCheckoutSession({ plan });
+      const stripe = await getStripe();
+      if (stripe) {
+        await stripe.redirectToCheckout({ sessionId });
+      } else {
+        throw new Error("Stripe.js not loaded");
+      }
+    } catch (error) {
+      console.error("Error creating checkout session:", error);
+      toast({
+        title: "Error",
+        description: "Could not redirect to payment. Please try again.",
+        variant: "destructive",
+      });
+      setIsRedirecting(false);
+    }
   };
 
   const handleSave = () => {
@@ -82,19 +94,6 @@ export default function PlansPage() {
       );
     }
     setIsEditing(false);
-    setSelectedPlan(null);
-  };
-
-  const handleConfirmSelection = () => {
-    if (selectedPlan) {
-      console.log(`Plan ${selectedPlan.name} selected!`);
-      // Here you would typically make an API call to update the subscription
-      toast({
-        title: "Plan Updated",
-        description: `Your subscription has been updated to the ${selectedPlan.name} plan.`,
-      });
-    }
-    setIsSelecting(false);
     setSelectedPlan(null);
   };
 
@@ -125,7 +124,12 @@ export default function PlansPage() {
       if (plan.id === currentPlanId) {
         return <Button className="w-full" disabled>Current Plan</Button>;
       }
-      return <Button className="w-full" onClick={() => handleSelectClick(plan)}>Select Plan</Button>;
+      return (
+        <Button className="w-full" onClick={() => handleSelectClick(plan)} disabled={isRedirecting}>
+          {isRedirecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+          Select Plan
+        </Button>
+      );
     }
     return null;
   }
@@ -236,23 +240,6 @@ export default function PlansPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Selection Alert Dialog for Admin */}
-      <AlertDialog open={isSelecting} onOpenChange={setIsSelecting}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Plan Selection</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to switch to the {selectedPlan?.name} plan for ${selectedPlan?.price}/month?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmSelection}>Confirm</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
     </div>
   );
 }
