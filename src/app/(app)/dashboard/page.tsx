@@ -109,71 +109,75 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Offering Analytics</CardTitle>
-            <CardDescription>Monthly offering over the last 6 months.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={offeringChartConfig} className="h-[250px] w-full">
-              <BarChart accessibilityLayer data={offeringData}>
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="month"
-                  tickLine={false}
-                  tickMargin={10}
-                  axisLine={false}
-                  tickFormatter={(value) => value.slice(0, 3)}
-                />
-                <ChartTooltip
-                  cursor={false}
-                  content={<ChartTooltipContent indicator="dot" />}
-                />
-                <Bar dataKey="total" fill="hsl(var(--primary))" radius={4} />
-              </BarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Attendance Analytics</CardTitle>
-            <CardDescription>Average attendance over the last 6 months.</CardDescription>
-          </CardHeader>
-          <CardContent>
-             <ChartContainer config={attendanceChartConfig} className="h-[250px] w-full">
-                <LineChart
-                  accessibilityLayer
-                  data={attendanceData}
-                  margin={{
-                    left: 12,
-                    right: 12,
-                  }}
-                >
+
+      {user?.role !== 'superuser' && (
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Offering Analytics</CardTitle>
+              <CardDescription>Monthly offering over the last 6 months.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={offeringChartConfig} className="h-[250px] w-full">
+                <BarChart accessibilityLayer data={offeringData}>
                   <CartesianGrid vertical={false} />
                   <XAxis
                     dataKey="month"
                     tickLine={false}
+                    tickMargin={10}
                     axisLine={false}
-                    tickMargin={8}
                     tickFormatter={(value) => value.slice(0, 3)}
                   />
                   <ChartTooltip
                     cursor={false}
-                    content={<ChartTooltipContent hideLabel />}
+                    content={<ChartTooltipContent indicator="dot" />}
                   />
-                  <Line
-                    dataKey="average"
-                    type="natural"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
+                  <Bar dataKey="total" fill="hsl(var(--primary))" radius={4} />
+                </BarChart>
               </ChartContainer>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Attendance Analytics</CardTitle>
+              <CardDescription>Average attendance over the last 6 months.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={attendanceChartConfig} className="h-[250px] w-full">
+                  <LineChart
+                    accessibilityLayer
+                    data={attendanceData}
+                    margin={{
+                      left: 12,
+                      right: 12,
+                    }}
+                  >
+                    <CartesianGrid vertical={false} />
+                    <XAxis
+                      dataKey="month"
+                      tickLine={false}
+                      axisLine={false}
+                      tickMargin={8}
+                      tickFormatter={(value) => value.slice(0, 3)}
+                    />
+                    <ChartTooltip
+                      cursor={false}
+                      content={<ChartTooltipContent hideLabel />}
+                    />
+                    <Line
+                      dataKey="average"
+                      type="natural"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ChartContainer>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
 
        {user?.role === "superuser" && (
         <div className="grid grid-cols-1 gap-8">
