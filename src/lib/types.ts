@@ -1,3 +1,4 @@
+
 export type UserRole = "member" | "admin" | "superuser";
 
 export interface User {
@@ -58,4 +59,12 @@ export interface Offering {
   amount: number;
   date: string;
   type: "Tithe" | "Personal" | "Building" | "Special";
+}
+
+export interface Information {
+  id: string;
+  title: string;
+  content: string;
+  date: string;
+  status: "published" | "archived";
 }

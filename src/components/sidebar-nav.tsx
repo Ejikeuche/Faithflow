@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -10,6 +11,7 @@ import {
   Church,
   CreditCard,
   BookOpen,
+  Megaphone,
 } from "lucide-react";
 import {
   SidebarMenu,
@@ -59,6 +61,12 @@ export function SidebarNav({ role }: SidebarNavProps) {
       href: "/sunday-school",
       label: "Sunday School",
       icon: BookOpen,
+      roles: ["admin", "superuser", "member"],
+    },
+     {
+      href: "/information",
+      label: "Information",
+      icon: Megaphone,
       roles: ["admin", "superuser", "member"],
     },
     {
