@@ -54,6 +54,7 @@ const validateOfferingDataPrompt = ai.definePrompt({
   - Verify that dates are in a consistent format and within a reasonable range.
   - Identify any duplicate records.
   - Check for any missing fields or incomplete data.
+  - **Crucially, use the member's email address from the file to identify the contributor. If an email is provided, verify it seems like a valid email. If an email is not present for a record, flag it as an error.**
 
   Based on your analysis, you will provide a summary of whether the data is valid or not, 
   a list of errors found (if any), and suggestions for correcting these errors.
