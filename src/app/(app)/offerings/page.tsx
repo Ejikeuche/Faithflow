@@ -48,7 +48,7 @@ export default function OfferingsPage() {
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-8">
-          <OfferingManager offerings={offerings} setOfferings={setOfferings} />
+          <OfferingManager offerings={offerings} setOfferings={setOfferings} toast={toast} />
         </div>
         <div className="space-y-8">
           <OfferingValidator onUploadSuccess={addUploadedOfferings} />

@@ -33,9 +33,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
 import type { Offering } from "@/lib/types";
 import { format, isValid, parseISO } from "date-fns";
+import type { useToast } from "@/hooks/use-toast";
 
 const emptyOffering: Omit<Offering, 'id'> = {
   name: "",
@@ -48,10 +48,10 @@ const emptyOffering: Omit<Offering, 'id'> = {
 interface OfferingManagerProps {
     offerings: Offering[];
     setOfferings: React.Dispatch<React.SetStateAction<Offering[]>>;
+    toast: ReturnType<typeof useToast>['toast'];
 }
 
-export function OfferingManager({ offerings, setOfferings }: OfferingManagerProps) {
-  const { toast } = useToast();
+export function OfferingManager({ offerings, setOfferings, toast }: OfferingManagerProps) {
   const [selectedOffering, setSelectedOffering] = useState<Omit<Offering, 'id'> & { id?: string } | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
