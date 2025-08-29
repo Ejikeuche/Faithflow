@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format, isValid } from "date-fns";
 import {
   Archive,
@@ -58,35 +58,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  getInformation,
+  addInformation,
+  updateInformation,
+  deleteInformation,
+  archiveInformation,
+} from "@/actions/information-actions";
 
-const initialInformation: Information[] = [
-  {
-    id: "1",
-    title: "Annual Summer Picnic",
-    content:
-      "Join us for our annual summer picnic on August 15th at Central Park. Fun, food, and fellowship for the whole family! We'll have games for the kids and a BBQ for everyone. Please sign up in the lobby so we can get a headcount.",
-    date: "2024-07-20",
-    status: "published",
-  },
-  {
-    id: "2",
-    title: "Guest Speaker This Sunday",
-    content:
-      "We are excited to have Pastor John from our sister church joining us this Sunday to deliver a special message. You won't want to miss it!",
-    date: "2024-07-18",
-    status: "published",
-  },
-  {
-    id: "3",
-    title: "Youth Group Car Wash Fundraiser",
-    content:
-      "The youth group will be holding a car wash fundraiser next Saturday to raise money for their upcoming mission trip. Please come out and support them!",
-    date: "2024-06-15",
-    status: "archived",
-  },
-];
 
-const emptyInformation: Omit<Information, "id"> = {
+const emptyInformation: Omit<Information, "id" | "createdAt"> = {
   title: "",
   content: "",
   date: new Date().toISOString().split("T")[0],
@@ -96,13 +78,32 @@ const emptyInformation: Omit<Information, "id"> = {
 export default function InformationPage() {
   const { user } = useUser();
   const { toast } = useToast();
-  const [information, setInformation] = useState(initialInformation);
-  const [selectedItem, setSelectedItem] = useState<Information | null>(null);
+  const [information, setInformation] = useState<Information[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedItem, setSelectedItem] = useState<Omit<Information, "createdAt"> | Omit<Information, "id" | "createdAt"> | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
 
+  const fetchInformation = async () => {
+    setIsLoading(true);
+    try {
+      const fetchedInformation = await getInformation();
+      setInformation(fetchedInformation);
+    } catch (error) {
+      console.error("Failed to fetch information:", error);
+      toast({ title: "Error", description: "Could not fetch information.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchInformation();
+  }, [toast]);
+
+
   const handleCreateClick = () => {
-    setSelectedItem(emptyInformation as Information);
+    setSelectedItem(emptyInformation);
     setDialogMode("create");
     setIsDialogOpen(true);
   };
@@ -113,7 +114,7 @@ export default function InformationPage() {
     setIsDialogOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!selectedItem) return;
 
     if (!selectedItem.title || !selectedItem.content) {
@@ -125,33 +126,31 @@ export default function InformationPage() {
       return;
     }
 
-    if (dialogMode === "create") {
-      setInformation([
-        { ...selectedItem, id: (information.length + 1).toString() },
-        ...information,
-      ]);
-      toast({
-        title: "Success",
-        description: "New information has been published.",
-      });
-    } else {
-      setInformation(
-        information.map((item) =>
-          item.id === selectedItem.id ? selectedItem : item
-        )
-      );
-      toast({
-        title: "Success",
-        description: "Information has been updated.",
-      });
+    try {
+      if (dialogMode === "create") {
+        await addInformation(selectedItem as Omit<Information, "id" | "createdAt">);
+        toast({
+          title: "Success",
+          description: "New information has been published.",
+        });
+      } else {
+        await updateInformation(selectedItem as Omit<Information, "createdAt">);
+        toast({
+          title: "Success",
+          description: "Information has been updated.",
+        });
+      }
+      await fetchInformation();
+      setIsDialogOpen(false);
+      setSelectedItem(null);
+    } catch (error) {
+      console.error("Failed to save information:", error);
+      toast({ title: "Error", description: "Could not save information.", variant: "destructive" });
     }
-
-    setIsDialogOpen(false);
-    setSelectedItem(null);
   };
 
   const handleFieldChange = (
-    field: keyof Omit<Information, "id">,
+    field: keyof Omit<Information, "id" | "createdAt">,
     value: string
   ) => {
     if (selectedItem) {
@@ -159,24 +158,30 @@ export default function InformationPage() {
     }
   };
 
-  const handleDelete = (id: string) => {
-    setInformation(information.filter((item) => item.id !== id));
-    toast({
-      title: "Deleted",
-      description: "The information item has been removed.",
-    });
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteInformation(id);
+      await fetchInformation();
+      toast({
+        title: "Deleted",
+        description: "The information item has been removed.",
+      });
+    } catch(error) {
+       toast({ title: "Error", description: "Could not delete item.", variant: "destructive" });
+    }
   };
 
-  const handleArchive = (id: string) => {
-    setInformation(
-      information.map((item) =>
-        item.id === id ? { ...item, status: "archived" } : item
-      )
-    );
-    toast({
-      title: "Archived",
-      description: "The information item has been archived.",
-    });
+  const handleArchive = async (id: string) => {
+    try {
+      await archiveInformation(id);
+      await fetchInformation();
+      toast({
+        title: "Archived",
+        description: "The information item has been archived.",
+      });
+    } catch(error) {
+       toast({ title: "Error", description: "Could not archive item.", variant: "destructive" });
+    }
   };
 
   const getStatusVariant = (status: Information["status"]) => {
@@ -191,8 +196,11 @@ export default function InformationPage() {
   };
 
   const parseDate = (dateString: string) => {
-    const [year, month, day] = dateString.split('-').map(Number);
-    return new Date(year, month - 1, day);
+    const date = new Date(dateString);
+    if (dateString && !dateString.includes('T')) {
+      date.setUTCHours(0, 0, 0, 0);
+    }
+    return date;
   }
 
   const AdminView = () => (
@@ -220,86 +228,94 @@ export default function InformationPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {information.map((item) => {
-                const date = parseDate(item.date);
-                return (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.title}</TableCell>
-                    <TableCell>
-                      {isValid(date)
-                        ? format(date, "PPP")
-                        : "Invalid Date"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusVariant(item.status)}>
-                        {item.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button size="icon" variant="ghost">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem onClick={() => handleEditClick(item)}>
-                            <Edit className="mr-2 h-4 w-4" /> Edit
-                          </DropdownMenuItem>
-                          {item.status === "published" && (
-                            <DropdownMenuItem
-                              onClick={() => handleArchive(item.id)}
-                            >
-                              <Archive className="mr-2 h-4 w-4" /> Archive
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {information.map((item) => {
+                  const date = parseDate(item.date);
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.title}</TableCell>
+                      <TableCell>
+                        {isValid(date)
+                          ? format(date, "PPP")
+                          : "Invalid Date"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusVariant(item.status)}>
+                          {item.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="icon" variant="ghost">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => handleEditClick(item)}>
+                              <Edit className="mr-2 h-4 w-4" /> Edit
                             </DropdownMenuItem>
-                          )}
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
+                            {item.status === "published" && (
                               <DropdownMenuItem
-                                onSelect={(e) => e.preventDefault()}
-                                className="text-destructive"
+                                onClick={() => handleArchive(item.id)}
                               >
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                <Archive className="mr-2 h-4 w-4" /> Archive
                               </DropdownMenuItem>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>
-                                  Are you sure?
-                                </AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action cannot be undone. This will
-                                  permanently delete the information item.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDelete(item.id)}
+                            )}
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <DropdownMenuItem
+                                  onSelect={(e) => e.preventDefault()}
+                                  className="text-destructive"
                                 >
-                                  Continue
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                                  <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                </DropdownMenuItem>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>
+                                    Are you sure?
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This action cannot be undone. This will
+                                    permanently delete the information item.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDelete(item.id)}
+                                  >
+                                    Continue
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
@@ -325,7 +341,7 @@ export default function InformationPage() {
                 </Label>
                 <Input
                   id="title"
-                  value={selectedItem.title}
+                  value={(selectedItem as Omit<Information, 'id' | 'createdAt'>).title}
                   onChange={(e) => handleFieldChange("title", e.target.value)}
                   className="col-span-3"
                 />
@@ -337,7 +353,7 @@ export default function InformationPage() {
                 <Input
                   id="date"
                   type="date"
-                  value={selectedItem.date}
+                  value={(selectedItem as Omit<Information, 'id' | 'createdAt'>).date}
                   onChange={(e) => handleFieldChange("date", e.target.value)}
                   className="col-span-3"
                 />
@@ -348,7 +364,7 @@ export default function InformationPage() {
                 </Label>
                 <Textarea
                   id="content"
-                  value={selectedItem.content}
+                  value={(selectedItem as Omit<Information, 'id' | 'createdAt'>).content}
                   onChange={(e) =>
                     handleFieldChange("content", e.target.value)
                   }
@@ -376,28 +392,35 @@ export default function InformationPage() {
           Latest news and announcements from the church.
         </p>
       </div>
-      <div className="space-y-6">
-        {information
-          .filter((item) => item.status === "published")
-          .map((item) => {
-            const date = parseDate(item.date);
-            return (
-              <Card key={item.id}>
-                <CardHeader>
-                  <CardTitle>{item.title}</CardTitle>
-                  <CardDescription>
-                    {isValid(date)
-                      ? format(date, "MMMM d, yyyy")
-                      : "No Date"}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">{item.content}</p>
-                </CardContent>
-              </Card>
-            );
-          })}
-      </div>
+      {isLoading ? (
+         <div className="space-y-6">
+            <Skeleton className="h-40 w-full" />
+            <Skeleton className="h-40 w-full" />
+         </div>
+      ) : (
+        <div className="space-y-6">
+          {information
+            .filter((item) => item.status === "published")
+            .map((item) => {
+              const date = parseDate(item.date);
+              return (
+                <Card key={item.id}>
+                  <CardHeader>
+                    <CardTitle>{item.title}</CardTitle>
+                    <CardDescription>
+                      {isValid(date)
+                        ? format(date, "MMMM d, yyyy")
+                        : "No Date"}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground">{item.content}</p>
+                  </CardContent>
+                </Card>
+              );
+            })}
+        </div>
+      )}
     </div>
   );
 

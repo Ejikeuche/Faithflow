@@ -78,4 +78,5 @@ export interface Information {
   content: string;
   date: string;
   status: "published" | "archived";
+  createdAt: string;
 }
