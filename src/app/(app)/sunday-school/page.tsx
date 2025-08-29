@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -17,7 +18,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +31,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
 
 const initialLessons: SundaySchoolLesson[] = [
   {
@@ -95,9 +95,9 @@ export default function SundaySchoolPage() {
     }
   };
 
-  const isValidDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date instanceof Date && !isNaN(date.getTime());
+  const parseDate = (dateString: string) => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day);
   }
   
   const AdminView = () => (
@@ -116,23 +116,26 @@ export default function SundaySchoolPage() {
         </div>
       
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-        {lessons.map((lesson) => (
-          <Card key={lesson.id} className="flex flex-col">
-            <CardHeader>
-              <CardTitle>{lesson.title}</CardTitle>
-              <CardDescription>{lesson.description}</CardDescription>
-               <CardDescription className="pt-2 text-xs text-muted-foreground">
-                {isValidDate(lesson.date) ? format(new Date(lesson.date), "MMMM d, yyyy") : 'No date'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex-grow">
-              <p className="text-sm text-muted-foreground line-clamp-3">{lesson.content}</p>
-            </CardContent>
-            <CardFooter>
-              <Button className="w-full" onClick={() => handleEditClick(lesson)}>Edit Lesson</Button>
-            </CardFooter>
-          </Card>
-        ))}
+        {lessons.map((lesson) => {
+          const date = parseDate(lesson.date);
+          return (
+            <Card key={lesson.id} className="flex flex-col">
+              <CardHeader>
+                <CardTitle>{lesson.title}</CardTitle>
+                <CardDescription>{lesson.description}</CardDescription>
+                <CardDescription className="pt-2 text-xs text-muted-foreground">
+                  {isValid(date) ? format(date, "MMMM d, yyyy") : 'No date'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex-grow">
+                <p className="text-sm text-muted-foreground line-clamp-3">{lesson.content}</p>
+              </CardContent>
+              <CardFooter>
+                <Button className="w-full" onClick={() => handleEditClick(lesson)}>Edit Lesson</Button>
+              </CardFooter>
+            </Card>
+          );
+        })}
       </div>
 
       <Dialog open={isEditing || isCreating} onOpenChange={isCreating ? setIsCreating : setIsEditing}>
@@ -218,20 +221,22 @@ export default function SundaySchoolPage() {
             </CardHeader>
             <CardContent>
                 <Accordion type="single" collapsible className="w-full">
-                    {lessons.map(lesson => (
+                    {lessons.map(lesson => {
+                      const date = parseDate(lesson.date);
+                      return (
                         <AccordionItem value={lesson.id} key={lesson.id}>
                             <AccordionTrigger>
                                 <div className="text-left">
                                     <h3 className="font-semibold">{lesson.title}</h3>
                                     <p className="text-sm text-muted-foreground">{lesson.description}</p>
-                                    <p className="pt-2 text-xs text-muted-foreground">{isValidDate(lesson.date) ? format(new Date(lesson.date), "MMMM d, yyyy") : 'No date'}</p>
+                                    <p className="pt-2 text-xs text-muted-foreground">{isValid(date) ? format(date, "MMMM d, yyyy") : 'No date'}</p>
                                 </div>
                             </AccordionTrigger>
                             <AccordionContent className="prose prose-sm max-w-none text-muted-foreground">
                                 {lesson.content}
                             </AccordionContent>
                         </AccordionItem>
-                    ))}
+                    )})}
                 </Accordion>
             </CardContent>
         </Card>

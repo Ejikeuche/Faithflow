@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -44,6 +45,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { format, isValid } from "date-fns";
 
 
 type Member = {
@@ -119,10 +121,16 @@ export default function MembersPage() {
         }
     };
     
+    const parseDate = (dateString: string) => {
+        const [year, month, day] = dateString.split('-').map(Number);
+        return new Date(year, month - 1, day);
+    }
+    
     const handleViewProfile = (member: Member) => {
+        const joinedDate = parseDate(member.joined);
         toast({
             title: `Profile: ${member.name}`,
-            description: `Email: ${member.email}, Role: ${member.role}, Joined: ${member.joined}`
+            description: `Email: ${member.email}, Role: ${member.role}, Joined: ${isValid(joinedDate) ? format(joinedDate, "PPP") : 'Invalid Date'}`
         });
     };
 
@@ -157,7 +165,9 @@ export default function MembersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {members.map((member) => (
+              {members.map((member) => {
+                const joinedDate = parseDate(member.joined);
+                return(
                 <TableRow key={member.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -174,7 +184,9 @@ export default function MembersPage() {
                       {member.role}
                     </Badge>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">{member.joined}</TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {isValid(joinedDate) ? format(joinedDate, "PPP") : 'Invalid Date'}
+                  </TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -209,7 +221,7 @@ export default function MembersPage() {
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))}
+              )})}
             </TableBody>
           </Table>
         </CardContent>

@@ -190,6 +190,11 @@ export default function InformationPage() {
     }
   };
 
+  const parseDate = (dateString: string) => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }
+
   const AdminView = () => (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -225,71 +230,74 @@ export default function InformationPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {information.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium">{item.title}</TableCell>
-                  <TableCell>
-                    {isValid(new Date(item.date))
-                      ? format(new Date(item.date), "PPP")
-                      : "Invalid Date"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusVariant(item.status)}>
-                      {item.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button size="icon" variant="ghost">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => handleEditClick(item)}>
-                          <Edit className="mr-2 h-4 w-4" /> Edit
-                        </DropdownMenuItem>
-                        {item.status === "published" && (
-                          <DropdownMenuItem
-                            onClick={() => handleArchive(item.id)}
-                          >
-                            <Archive className="mr-2 h-4 w-4" /> Archive
+              {information.map((item) => {
+                const date = parseDate(item.date);
+                return (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium">{item.title}</TableCell>
+                    <TableCell>
+                      {isValid(date)
+                        ? format(date, "PPP")
+                        : "Invalid Date"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusVariant(item.status)}>
+                        {item.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="icon" variant="ghost">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem onClick={() => handleEditClick(item)}>
+                            <Edit className="mr-2 h-4 w-4" /> Edit
                           </DropdownMenuItem>
-                        )}
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
+                          {item.status === "published" && (
                             <DropdownMenuItem
-                              onSelect={(e) => e.preventDefault()}
-                              className="text-destructive"
+                              onClick={() => handleArchive(item.id)}
                             >
-                              <Trash2 className="mr-2 h-4 w-4" /> Delete
+                              <Archive className="mr-2 h-4 w-4" /> Archive
                             </DropdownMenuItem>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                Are you sure?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This action cannot be undone. This will
-                                permanently delete the information item.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDelete(item.id)}
+                          )}
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem
+                                onSelect={(e) => e.preventDefault()}
+                                className="text-destructive"
                               >
-                                Continue
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Are you sure?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will
+                                  permanently delete the information item.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDelete(item.id)}
+                                >
+                                  Continue
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>
@@ -371,21 +379,24 @@ export default function InformationPage() {
       <div className="space-y-6">
         {information
           .filter((item) => item.status === "published")
-          .map((item) => (
-            <Card key={item.id}>
-              <CardHeader>
-                <CardTitle>{item.title}</CardTitle>
-                <CardDescription>
-                  {isValid(new Date(item.date))
-                    ? format(new Date(item.date), "MMMM d, yyyy")
-                    : "No Date"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">{item.content}</p>
-              </CardContent>
-            </Card>
-          ))}
+          .map((item) => {
+            const date = parseDate(item.date);
+            return (
+              <Card key={item.id}>
+                <CardHeader>
+                  <CardTitle>{item.title}</CardTitle>
+                  <CardDescription>
+                    {isValid(date)
+                      ? format(date, "MMMM d, yyyy")
+                      : "No Date"}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">{item.content}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
       </div>
     </div>
   );

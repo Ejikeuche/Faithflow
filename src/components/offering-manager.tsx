@@ -107,6 +107,11 @@ export function OfferingManager() {
       default: return 'default';
     }
   }
+  
+  const parseDate = (dateString: string) => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }
 
   const grandTotal = offerings.reduce((acc, record) => acc + record.amount, 0);
 
@@ -137,36 +142,39 @@ export function OfferingManager() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {offerings.map((offering) => (
-                <TableRow key={offering.id}>
-                  <TableCell>
-                    <div className="font-medium">{offering.name}</div>
-                    <div className="text-sm text-muted-foreground">{offering.email}</div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getOfferingTypeVariant(offering.type)}>{offering.type}</Badge>
-                  </TableCell>
-                  <TableCell>
-                     {isValid(new Date(offering.date)) ? format(new Date(offering.date), "PPP") : 'Invalid Date'}
-                  </TableCell>
-                  <TableCell className="text-right">${offering.amount.toFixed(2)}</TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button aria-haspopup="true" size="icon" variant="ghost">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => handleEditClick(offering)}>Edit</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDelete(offering.id)} className="text-destructive">Delete</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {offerings.map((offering) => {
+                const date = parseDate(offering.date);
+                return (
+                  <TableRow key={offering.id}>
+                    <TableCell>
+                      <div className="font-medium">{offering.name}</div>
+                      <div className="text-sm text-muted-foreground">{offering.email}</div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getOfferingTypeVariant(offering.type)}>{offering.type}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {isValid(date) ? format(date, "PPP") : 'Invalid Date'}
+                    </TableCell>
+                    <TableCell className="text-right">${offering.amount.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => handleEditClick(offering)}>Edit</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDelete(offering.id)} className="text-destructive">Delete</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
              <TableFooter>
                 <TableRow>

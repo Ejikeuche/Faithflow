@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -130,6 +131,11 @@ export default function AttendancePage() {
         }
     }
   };
+  
+  const parseDate = (dateString: string) => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }
 
   const grandTotal = records.reduce((acc, record) => acc + record.total, 0);
 
@@ -170,54 +176,57 @@ export default function AttendancePage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {records.map((record) => (
-                <TableRow key={record.id}>
-                  <TableCell>
-                    {isValid(new Date(record.date)) ? format(new Date(record.date), "PPP") : 'Invalid Date'}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{record.serviceType}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right">{record.men}</TableCell>
-                  <TableCell className="text-right">{record.women}</TableCell>
-                  <TableCell className="text-right">{record.youth}</TableCell>
-                  <TableCell className="text-right">{record.children}</TableCell>
-                  <TableCell className="text-right font-medium">{record.total}</TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button aria-haspopup="true" size="icon" variant="ghost">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => handleEditClick(record)}>Edit</DropdownMenuItem>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
-                              Delete
-                            </DropdownMenuItem>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete the attendance record.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(record.id)}>Continue</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {records.map((record) => {
+                const date = parseDate(record.date);
+                return (
+                  <TableRow key={record.id}>
+                    <TableCell>
+                      {isValid(date) ? format(date, "PPP") : 'Invalid Date'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{record.serviceType}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">{record.men}</TableCell>
+                    <TableCell className="text-right">{record.women}</TableCell>
+                    <TableCell className="text-right">{record.youth}</TableCell>
+                    <TableCell className="text-right">{record.children}</TableCell>
+                    <TableCell className="text-right font-medium">{record.total}</TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => handleEditClick(record)}>Edit</DropdownMenuItem>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
+                                Delete
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will permanently delete the attendance record.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(record.id)}>Continue</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
             <TableFooter>
                 <TableRow>
