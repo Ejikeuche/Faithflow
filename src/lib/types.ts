@@ -50,3 +50,12 @@ export interface AttendanceRecord {
     children: number;
     total: number;
 }
+
+export interface Offering {
+  id: string;
+  name: string;
+  email: string;
+  amount: number;
+  date: string;
+  type: "Tithe" | "Personal" | "Building" | "Special";
+}
