@@ -58,6 +58,7 @@ export interface AttendanceRecord {
     youth: number;
     children: number;
     total: number;
+    createdAt: string;
 }
 
 export interface Offering {

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -55,18 +55,13 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import type { AttendanceRecord } from "@/lib/types";
 import { format, isValid } from "date-fns";
+import { getAttendanceRecords, addAttendanceRecord, updateAttendanceRecord, deleteAttendanceRecord } from "@/actions/attendance-actions";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const initialRecords: AttendanceRecord[] = [
-  { id: "1", date: "2024-07-21", serviceType: "Sunday Service", men: 50, women: 65, youth: 30, children: 25, total: 170 },
-  { id: "2", date: "2024-07-24", serviceType: "Midweek Service", men: 25, women: 30, youth: 15, children: 10, total: 80 },
-  { id: "3", date: "2024-07-28", serviceType: "Sunday Service", men: 55, women: 70, youth: 35, children: 30, total: 190 },
-];
-
-const emptyRecord: Omit<AttendanceRecord, 'id' | 'total'> = {
+const emptyRecord: Omit<AttendanceRecord, 'id' | 'createdAt' | 'total'> = {
   date: new Date().toISOString().split("T")[0],
   serviceType: "Sunday Service",
   men: 0,
@@ -77,12 +72,29 @@ const emptyRecord: Omit<AttendanceRecord, 'id' | 'total'> = {
 
 export default function AttendancePage() {
   const { toast } = useToast();
-  const [records, setRecords] = useState(initialRecords);
-  const [selectedRecord, setSelectedRecord] = useState<Omit<AttendanceRecord, 'id' | 'total'> & { id?: string } | null>(null);
+  const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [selectedRecord, setSelectedRecord] = useState<Omit<AttendanceRecord, 'createdAt' | 'total'> | Omit<AttendanceRecord, 'id' | 'createdAt' | 'total'> | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const calculateTotal = (record: Omit<AttendanceRecord, 'id' | 'total'>) => {
-    return (record.men || 0) + (record.women || 0) + (record.youth || 0) + (record.children || 0);
+  useEffect(() => {
+    const fetchRecords = async () => {
+      setIsLoading(true);
+      try {
+        const fetchedRecords = await getAttendanceRecords();
+        setRecords(fetchedRecords);
+      } catch (error) {
+        console.error("Failed to fetch attendance records:", error);
+        toast({ title: "Error", description: "Could not fetch attendance records.", variant: "destructive" });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchRecords();
+  }, [toast]);
+
+  const calculateTotal = (record: Omit<AttendanceRecord, 'id' | 'createdAt' | 'total'>) => {
+    return (Number(record.men) || 0) + (Number(record.women) || 0) + (Number(record.youth) || 0) + (Number(record.children) || 0);
   }
 
   const handleAddClick = () => {
@@ -91,50 +103,61 @@ export default function AttendancePage() {
   };
 
   const handleEditClick = (record: AttendanceRecord) => {
-    setSelectedRecord(record);
+    const { createdAt, ...editableRecord } = record;
+    setSelectedRecord(editableRecord);
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (recordId: string) => {
-    setRecords(records.filter((r) => r.id !== recordId));
-    toast({ title: "Record Deleted", description: "The attendance record has been removed." });
+  const handleDelete = async (recordId: string) => {
+    try {
+      await deleteAttendanceRecord(recordId);
+      setRecords(records.filter((r) => r.id !== recordId));
+      toast({ title: "Record Deleted", description: "The attendance record has been removed." });
+    } catch (error) {
+      console.error("Failed to delete record:", error);
+      toast({ title: "Error", description: "Could not delete the record.", variant: "destructive" });
+    }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!selectedRecord?.date || !selectedRecord?.serviceType) {
       toast({ title: "Error", description: "Date and Service Type are required.", variant: "destructive" });
       return;
     }
 
     const total = calculateTotal(selectedRecord);
+    const recordToSave = { ...selectedRecord, total };
 
-    if (selectedRecord.id) {
-      setRecords(
-        records.map((r) => (r.id === selectedRecord.id ? { ...selectedRecord, total } as AttendanceRecord : r))
-      );
-      toast({ title: "Record Updated", description: `The attendance record has been updated.` });
-    } else {
-      const newRecord: AttendanceRecord = { ...selectedRecord, id: (records.length + 1).toString(), total };
-      setRecords([...records, newRecord]);
-      toast({ title: "Record Added", description: `A new attendance record has been added.` });
+    try {
+      if ('id' in recordToSave && recordToSave.id) {
+        const updatedRecord = await updateAttendanceRecord(recordToSave as Omit<AttendanceRecord, 'createdAt'>);
+        setRecords(records.map((r) => (r.id === updatedRecord.id ? updatedRecord : r)));
+        toast({ title: "Record Updated", description: `The attendance record has been updated.` });
+      } else {
+        const newRecord = await addAttendanceRecord(recordToSave as Omit<AttendanceRecord, 'id' | 'createdAt'>);
+        setRecords([newRecord, ...records]);
+        toast({ title: "Record Added", description: `A new attendance record has been added.` });
+      }
+      setIsDialogOpen(false);
+      setSelectedRecord(null);
+    } catch (error) {
+      console.error("Failed to save record:", error);
+      toast({ title: "Error", description: "Could not save the record.", variant: "destructive" });
     }
-    setIsDialogOpen(false);
-    setSelectedRecord(null);
   };
 
-  const handleFieldChange = (field: keyof Omit<AttendanceRecord, 'id' | 'total' >, value: string | number) => {
+  const handleFieldChange = (field: keyof Omit<AttendanceRecord, 'id' | 'createdAt' | 'total'>, value: string | number) => {
     if (selectedRecord) {
-        if (['men', 'women', 'youth', 'children'].includes(field as string)) {
-            setSelectedRecord(prev => prev ? { ...prev, [field]: Number(value) } : null);
-        } else {
-            setSelectedRecord(prev => prev ? { ...prev, [field]: value } : null);
-        }
+        setSelectedRecord(prev => prev ? { ...prev, [field]: value } : null);
     }
   };
   
   const parseDate = (dateString: string) => {
-    const [year, month, day] = dateString.split('-').map(Number);
-    return new Date(year, month - 1, day);
+    const date = new Date(dateString);
+     if (dateString && !dateString.includes('T')) {
+      date.setUTCHours(0,0,0,0);
+    }
+    return date;
   }
 
   const grandTotal = records.reduce((acc, record) => acc + record.total, 0);
@@ -160,97 +183,105 @@ export default function AttendancePage() {
           </Button>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Service</TableHead>
-                <TableHead className="text-right">Men</TableHead>
-                <TableHead className="text-right">Women</TableHead>
-                <TableHead className="text-right">Youth</TableHead>
-                <TableHead className="text-right">Children</TableHead>
-                <TableHead className="text-right font-bold">Total</TableHead>
-                <TableHead>
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {records.map((record) => {
-                const date = parseDate(record.date);
-                return (
-                  <TableRow key={record.id}>
-                    <TableCell>
-                      {isValid(date) ? format(date, "PPP") : 'Invalid Date'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{record.serviceType}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">{record.men}</TableCell>
-                    <TableCell className="text-right">{record.women}</TableCell>
-                    <TableCell className="text-right">{record.youth}</TableCell>
-                    <TableCell className="text-right">{record.children}</TableCell>
-                    <TableCell className="text-right font-medium">{record.total}</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button aria-haspopup="true" size="icon" variant="ghost">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => handleEditClick(record)}>Edit</DropdownMenuItem>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
-                                Delete
-                              </DropdownMenuItem>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action cannot be undone. This will permanently delete the attendance record.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDelete(record.id)}>Continue</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-            <TableFooter>
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
                 <TableRow>
-                    <TableCell colSpan={6} className="font-bold">Grand Total</TableCell>
-                    <TableCell className="text-right font-bold">{grandTotal.toLocaleString()}</TableCell>
-                    <TableCell></TableCell>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Service</TableHead>
+                  <TableHead className="text-right">Men</TableHead>
+                  <TableHead className="text-right">Women</TableHead>
+                  <TableHead className="text-right">Youth</TableHead>
+                  <TableHead className="text-right">Children</TableHead>
+                  <TableHead className="text-right font-bold">Total</TableHead>
+                  <TableHead>
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
                 </TableRow>
-            </TableFooter>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {records.map((record) => {
+                  const date = parseDate(record.date);
+                  return (
+                    <TableRow key={record.id}>
+                      <TableCell>
+                        {isValid(date) ? format(date, "PPP") : 'Invalid Date'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{record.serviceType}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">{record.men}</TableCell>
+                      <TableCell className="text-right">{record.women}</TableCell>
+                      <TableCell className="text-right">{record.youth}</TableCell>
+                      <TableCell className="text-right">{record.children}</TableCell>
+                      <TableCell className="text-right font-medium">{record.total}</TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Toggle menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => handleEditClick(record)}>Edit</DropdownMenuItem>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
+                                  Delete
+                                </DropdownMenuItem>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete the attendance record.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDelete(record.id)}>Continue</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+              <TableFooter>
+                  <TableRow>
+                      <TableCell colSpan={6} className="font-bold">Grand Total</TableCell>
+                      <TableCell className="text-right font-bold">{grandTotal.toLocaleString()}</TableCell>
+                      <TableCell></TableCell>
+                  </TableRow>
+              </TableFooter>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
-            <DialogTitle>{selectedRecord?.id ? "Edit Attendance Record" : "Add New Record"}</DialogTitle>
+            <DialogTitle>{selectedRecord && 'id' in selectedRecord ? "Edit Attendance Record" : "Add New Record"}</DialogTitle>
             <DialogDescription>
-              {selectedRecord?.id ? "Update the attendance details." : "Fill in the details for the new record."}
+              {selectedRecord && 'id' in selectedRecord ? "Update the attendance details." : "Fill in the details for the new record."}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="date" className="text-right">Date</Label>
-              <Input id="date" type="date" value={selectedRecord?.date} onChange={(e) => handleFieldChange("date", e.target.value)} className="col-span-3" />
+              <Input id="date" type="date" value={selectedRecord?.date || ''} onChange={(e) => handleFieldChange("date", e.target.value)} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="serviceType" className="text-right">Service</Label>
@@ -267,23 +298,23 @@ export default function AttendancePage() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="men" className="text-right">Men</Label>
-              <Input id="men" type="number" min="0" value={selectedRecord?.men} onChange={(e) => handleFieldChange("men", e.target.value)} className="col-span-3" />
+              <Input id="men" type="number" min="0" value={selectedRecord?.men || 0} onChange={(e) => handleFieldChange("men", e.target.value)} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="women" className="text-right">Women</Label>
-              <Input id="women" type="number" min="0" value={selectedRecord?.women} onChange={(e) => handleFieldChange("women", e.target.value)} className="col-span-3" />
+              <Input id="women" type="number" min="0" value={selectedRecord?.women || 0} onChange={(e) => handleFieldChange("women", e.target.value)} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="youth" className="text-right">Youth</Label>
-              <Input id="youth" type="number" min="0" value={selectedRecord?.youth} onChange={(e) => handleFieldChange("youth", e.target.value)} className="col-span-3" />
+              <Input id="youth" type="number" min="0" value={selectedRecord?.youth || 0} onChange={(e) => handleFieldChange("youth", e.target.value)} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="children" className="text-right">Children</Label>
-              <Input id="children" type="number" min="0" value={selectedRecord?.children} onChange={(e) => handleFieldChange("children", e.target.value)} className="col-span-3" />
+              <Input id="children" type="number" min="0" value={selectedRecord?.children || 0} onChange={(e) => handleFieldChange("children", e.target.value)} className="col-span-3" />
             </div>
              <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="total" className="text-right font-bold">Total</Label>
-              <Input id="total" type="number" value={selectedRecord ? calculateTotal(selectedRecord) : 0} disabled className="col-span-3 font-bold" />
+              <Input id="total" type="number" value={selectedRecord ? calculateTotal(selectedRecord as Omit<AttendanceRecord, 'id' | 'createdAt' | 'total'>) : 0} disabled className="col-span-3 font-bold" />
             </div>
           </div>
           <DialogFooter>
