@@ -32,11 +32,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const members = [
-    { id: "1", name: "John Doe", email: "john.d@example.com", role: "Admin", joined: "2023-01-15", monthlyOffering: 250, yearlyOffering: 3000 },
-    { id: "2", name: "Jane Smith", email: "jane.s@example.com", role: "Member", joined: "2023-02-20", monthlyOffering: 150, yearlyOffering: 1800 },
-    { id: "3", name: "Sam Wilson", email: "sam.w@example.com", role: "Member", joined: "2022-11-10", monthlyOffering: 100, yearlyOffering: 1200 },
-    { id: "4", name: "Emily Brown", email: "emily.b@example.com", role: "Member", joined: "2023-05-01", monthlyOffering: 200, yearlyOffering: 2400 },
-    { id: "5", name: "Michael Johnson", email: "michael.j@example.com", role: "Member", joined: "2021-08-23", monthlyOffering: 300, yearlyOffering: 3600 },
+    { id: "1", name: "John Doe", email: "john.d@example.com", role: "Admin", joined: "2023-01-15" },
+    { id: "2", name: "Jane Smith", email: "jane.s@example.com", role: "Member", joined: "2023-02-20" },
+    { id: "3", name: "Sam Wilson", email: "sam.w@example.com", role: "Member", joined: "2022-11-10" },
+    { id: "4", name: "Emily Brown", email: "emily.b@example.com", role: "Member", joined: "2023-05-01" },
+    { id: "5", name: "Michael Johnson", email: "michael.j@example.com", role: "Member", joined: "2021-08-23" },
 ];
 
 export default function MembersPage() {
@@ -108,8 +108,6 @@ export default function MembersPage() {
                 <TableHead className="hidden md:table-cell">Email</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead className="hidden md:table-cell">Joined Date</TableHead>
-                <TableHead className="text-right">Monthly Offering</TableHead>
-                <TableHead className="text-right">Yearly Offering</TableHead>
                 <TableHead>
                   <span className="sr-only">Actions</span>
                 </TableHead>
@@ -134,8 +132,6 @@ export default function MembersPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">{member.joined}</TableCell>
-                  <TableCell className="text-right">${member.monthlyOffering.toFixed(2)}</TableCell>
-                  <TableCell className="text-right">${member.yearlyOffering.toFixed(2)}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
