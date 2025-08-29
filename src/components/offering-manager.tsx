@@ -35,14 +35,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import type { Offering } from "@/lib/types";
-import { format, isValid } from "date-fns";
-
-const initialOfferings: Offering[] = [
-  { id: "1", name: "John Doe", email: "john.d@example.com", amount: 150.00, date: "2024-07-21", type: "Tithe" },
-  { id: "2", name: "Jane Smith", email: "jane.s@example.com", amount: 75.50, date: "2024-07-21", type: "Personal" },
-  { id: "3", name: "Sam Wilson", email: "sam.w@example.com", amount: 500.00, date: "2024-07-20", type: "Building" },
-  { id: "4", name: "Emily Brown", email: "emily.b@example.com", amount: 200.00, date: "2024-07-19", type: "Special" },
-];
+import { format, isValid, parseISO } from "date-fns";
 
 const emptyOffering: Omit<Offering, 'id'> = {
   name: "",
@@ -52,10 +45,13 @@ const emptyOffering: Omit<Offering, 'id'> = {
   type: "Tithe",
 };
 
+interface OfferingManagerProps {
+    offerings: Offering[];
+    setOfferings: React.Dispatch<React.SetStateAction<Offering[]>>;
+}
 
-export function OfferingManager() {
+export function OfferingManager({ offerings, setOfferings }: OfferingManagerProps) {
   const { toast } = useToast();
-  const [offerings, setOfferings] = useState(initialOfferings);
   const [selectedOffering, setSelectedOffering] = useState<Omit<Offering, 'id'> & { id?: string } | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -109,8 +105,8 @@ export function OfferingManager() {
   }
   
   const parseDate = (dateString: string) => {
-    const [year, month, day] = dateString.split('-').map(Number);
-    return new Date(year, month - 1, day);
+    const date = parseISO(dateString);
+    return date;
   }
 
   const grandTotal = offerings.reduce((acc, record) => acc + record.amount, 0);

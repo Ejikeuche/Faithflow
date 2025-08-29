@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -48,20 +49,23 @@ const validateOfferingDataPrompt = ai.definePrompt({
   You will receive offering data in either CSV or Excel format. Your task is to carefully
   analyze the data for any signs of inconsistency, errors, or potential fraud.
 
+  The file should contain columns for 'name', 'email', 'amount', 'date', and 'type'. The order does not matter.
+
   Here are some key checks you should perform:
-  - Check if all monetary values are valid numbers.
+  - Check if all monetary values are valid positive numbers.
   - Look for any unusually large or small donations that might indicate errors.
-  - Verify that dates are in a consistent format and within a reasonable range.
+  - Verify that dates are in a consistent format and within a reasonable range (e.g., YYYY-MM-DD).
   - Identify any duplicate records.
-  - Check for any missing fields or incomplete data.
+  - Check for any missing fields or incomplete data in any of the required columns.
   - **Crucially, use the member's email address from the file to identify the contributor. If an email is provided, verify it seems like a valid email. If an email is not present for a record, flag it as an error.**
+  - Verify the 'type' column contains valid values (Tithe, Personal, Building, Special).
 
   Based on your analysis, you will provide a summary of whether the data is valid or not, 
-  a list of errors found (if any), and suggestions for correcting these errors.
+  a list of errors found (if any), and suggestions for correcting these errors. If there are any errors, isValid should be false.
 
   Data Type: {{{fileType}}}
   Data: {{{fileData}}}
-  \n\n Output your response as a valid JSON conforming to the schema. Make sure the \"errors\" and \"suggestions\" fields are arrays of strings.`,
+  \n\n Output your response as a valid JSON conforming to the schema. Make sure the "errors" and "suggestions" fields are arrays of strings.`,
 });
 
 const validateOfferingDataFlow = ai.defineFlow(

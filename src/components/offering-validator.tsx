@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -19,10 +20,15 @@ import {
   AlertCircle,
   Lightbulb,
 } from "lucide-react";
-import { validateOfferingFile } from "@/actions/validate-offering";
+import { processOfferingFile } from "@/actions/process-offering-file";
 import type { ValidateOfferingDataOutput } from "@/ai/flows/validate-offering-data";
+import type { Offering } from "@/lib/types";
 
-export function OfferingValidator() {
+interface OfferingValidatorProps {
+    onUploadSuccess: (offerings: Omit<Offering, 'id'>[]) => void;
+}
+
+export function OfferingValidator({ onUploadSuccess }: OfferingValidatorProps) {
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [validationResult, setValidationResult] = useState<ValidateOfferingDataOutput | null>(null);
@@ -46,7 +52,7 @@ export function OfferingValidator() {
       reader.onerror = (error) => reject(error);
     });
 
-  const handleValidate = async () => {
+  const handleValidateAndProcess = async () => {
     if (!file) {
       setError("Please select a file first.");
       return;
@@ -68,10 +74,13 @@ export function OfferingValidator() {
 
     try {
       const fileData = await toBase64(file);
-      const result = await validateOfferingFile({ fileData, fileType });
-      setValidationResult(result);
-      if (result.isValid) {
+      const result = await processOfferingFile({ fileData, fileType });
+      
+      setValidationResult(result.validation);
+
+      if (result.validation.isValid && result.parsedData) {
         setStatus("success");
+        onUploadSuccess(result.parsedData);
       } else {
         setStatus("error");
       }
@@ -102,13 +111,13 @@ export function OfferingValidator() {
               accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
             />
           </div>
-          <Button onClick={handleValidate} disabled={!file || status === "loading"}>
+          <Button onClick={handleValidateAndProcess} disabled={!file || status === "loading"}>
             {status === "loading" ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Upload className="mr-2 h-4 w-4" />
             )}
-            Validate File
+            Validate & Process
           </Button>
         </div>
 
@@ -132,9 +141,9 @@ export function OfferingValidator() {
             {validationResult.isValid ? (
               <Alert>
                 <FileCheck2 className="h-4 w-4" />
-                <AlertTitle>Validation Passed</AlertTitle>
+                <AlertTitle>Validation & Processing Successful</AlertTitle>
                 <AlertDescription>
-                  The uploaded offering data appears to be consistent and valid.
+                  The uploaded offering data has been validated and added to the records.
                 </AlertDescription>
               </Alert>
             ) : (
@@ -142,8 +151,8 @@ export function OfferingValidator() {
                 <FileWarning className="h-4 w-4" />
                 <AlertTitle>Validation Issues Found</AlertTitle>
                 <AlertDescription>
-                  The AI found potential issues with your file. Please review the
-                  errors and suggestions below.
+                  The AI found potential issues with your file. Records were not added. Please review the
+                  errors and suggestions below, correct the file, and try again.
                 </AlertDescription>
               </Alert>
             )}
