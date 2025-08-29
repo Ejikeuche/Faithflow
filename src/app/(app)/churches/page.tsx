@@ -50,7 +50,7 @@ const emptyChurch: Omit<Church, 'id' | 'createdAt'> = {
 export default function ChurchesPage() {
   const { toast } = useToast();
   const [churches, setChurches] = useState<Church[]>([]);
-  const [selectedChurch, setSelectedChurch] = useState<Partial<Church> | null>(null);
+  const [selectedChurch, setSelectedChurch] = useState<Omit<Church, 'createdAt'> | Omit<Church, 'id' | 'createdAt'> | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -87,7 +87,7 @@ export default function ChurchesPage() {
     }
 
     try {
-      if (selectedChurch.id) {
+      if ('id' in selectedChurch && selectedChurch.id) {
         // Editing existing church
         const updatedChurch = await updateChurch(selectedChurch as Omit<Church, 'createdAt'>);
         setChurches(churches.map(c => c.id === updatedChurch.id ? updatedChurch : c));
@@ -189,9 +189,9 @@ export default function ChurchesPage() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                  <DialogTitle>{selectedChurch?.id ? 'Edit Church' : 'Add New Church'}</DialogTitle>
+                  <DialogTitle>{selectedChurch && 'id' in selectedChurch ? 'Edit Church' : 'Add New Church'}</DialogTitle>
                   <DialogDescription>
-                      {selectedChurch?.id ? 'Update the details for this church.' : 'Fill in the details for the new church.'} Click save when you're done.
+                      {selectedChurch && 'id' in selectedChurch ? 'Update the details for this church.' : 'Fill in the details for the new church.'} Click save when you're done.
                   </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">

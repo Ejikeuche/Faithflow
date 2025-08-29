@@ -2,7 +2,7 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { collection, getDocs, addDoc, doc, updateDoc, serverTimestamp, query, orderBy, getDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc, serverTimestamp, query, orderBy, getDoc, Timestamp } from 'firebase/firestore';
 import type { Church } from '@/lib/types';
 
 const churchesCollection = collection(db, 'churches');
@@ -10,6 +10,14 @@ const churchesCollection = collection(db, 'churches');
 // Helper function to convert Firestore doc to Church object
 const toChurchObject = (doc: any): Church => {
     const data = doc.data();
+    let createdAt = new Date().toISOString(); // Default value
+
+    if (data.createdAt instanceof Timestamp) {
+        createdAt = data.createdAt.toDate().toISOString();
+    } else if (typeof data.createdAt === 'string') {
+        createdAt = data.createdAt;
+    }
+    
     return {
         id: doc.id,
         name: data.name,
@@ -20,8 +28,7 @@ const toChurchObject = (doc: any): Church => {
         email: data.email,
         phone: data.phone,
         website: data.website,
-        // Convert timestamp to string if it exists
-        createdAt: data.createdAt?.toDate().toISOString() || new Date().toISOString(),
+        createdAt: createdAt,
     };
 };
 
