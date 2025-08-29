@@ -39,3 +39,14 @@ export interface SundaySchoolLesson {
     content: string;
     date: string;
 }
+
+export interface AttendanceRecord {
+    id: string;
+    date: string;
+    serviceType: "Sunday Service" | "Midweek Service" | "Special Service";
+    men: number;
+    women: number;
+    youth: number;
+    children: number;
+    total: number;
+}

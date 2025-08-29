@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
-  ClipboardCheck,
+  BookUser,
   HandCoins,
   Church,
   CreditCard,
@@ -46,7 +46,7 @@ export function SidebarNav({ role }: SidebarNavProps) {
     {
       href: "/attendance",
       label: "Attendance",
-      icon: ClipboardCheck,
+      icon: BookUser,
       roles: ["admin", "superuser"],
     },
     {
