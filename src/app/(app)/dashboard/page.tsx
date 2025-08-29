@@ -84,7 +84,7 @@ export default function DashboardPage() {
             </p>
           </CardContent>
         </Card>
-        {user?.role !== 'superuser' && (
+        {user?.role === 'admin' && (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Offering</CardTitle>
@@ -106,6 +106,7 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground">+19% from last month</p>
           </CardContent>
         </Card>
+        {user?.role === 'superuser' && (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Churches Managed</CardTitle>
@@ -116,9 +117,10 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground">Superuser view</p>
           </CardContent>
         </Card>
+        )}
       </div>
 
-      {user?.role !== 'superuser' && (
+      {user?.role === 'admin' && (
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           <Card>
             <CardHeader>
