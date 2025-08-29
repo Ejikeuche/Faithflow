@@ -1,6 +1,49 @@
+
+"use client"
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, HandCoins, Church, UserCheck } from "lucide-react";
 import Image from "next/image";
+import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis } from "recharts"
+
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart"
+
+const offeringData = [
+  { month: "January", total: 12345 },
+  { month: "February", total: 15678 },
+  { month: "March", total: 18901 },
+  { month: "April", total: 17532 },
+  { month: "May", total: 20145 },
+  { month: "June", total: 22876 },
+];
+
+const offeringChartConfig = {
+  total: {
+    label: "Total Offering",
+  },
+} satisfies ChartConfig
+
+const attendanceData = [
+  { month: "January", average: 650 },
+  { month: "February", average: 700 },
+  { month: "March", average: 750 },
+  { month: "April", average: 720 },
+  { month: "May", average: 800 },
+  { month: "June", average: 852 },
+];
+
+const attendanceChartConfig = {
+  average: {
+    label: "Average Attendance",
+    color: "hsl(var(--primary))",
+  },
+} satisfies ChartConfig
+
 
 export default function DashboardPage() {
   return (
@@ -48,6 +91,71 @@ export default function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold">3</div>
             <p className="text-xs text-muted-foreground">Superuser view</p>
+          </CardContent>
+        </Card>
+      </div>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Offering Analytics</CardTitle>
+            <CardDescription>Monthly offering over the last 6 months.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={offeringChartConfig} className="h-[250px] w-full">
+              <BarChart accessibilityLayer data={offeringData}>
+                <CartesianGrid vertical={false} />
+                <XAxis
+                  dataKey="month"
+                  tickLine={false}
+                  tickMargin={10}
+                  axisLine={false}
+                  tickFormatter={(value) => value.slice(0, 3)}
+                />
+                <ChartTooltip
+                  cursor={false}
+                  content={<ChartTooltipContent indicator="dot" />}
+                />
+                <Bar dataKey="total" fill="hsl(var(--primary))" radius={4} />
+              </BarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Attendance Analytics</CardTitle>
+            <CardDescription>Average attendance over the last 6 months.</CardDescription>
+          </CardHeader>
+          <CardContent>
+             <ChartContainer config={attendanceChartConfig} className="h-[250px] w-full">
+                <LineChart
+                  accessibilityLayer
+                  data={attendanceData}
+                  margin={{
+                    left: 12,
+                    right: 12,
+                  }}
+                >
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey="month"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    tickFormatter={(value) => value.slice(0, 3)}
+                  />
+                  <ChartTooltip
+                    cursor={false}
+                    content={<ChartTooltipContent hideLabel />}
+                  />
+                  <Line
+                    dataKey="average"
+                    type="natural"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ChartContainer>
           </CardContent>
         </Card>
       </div>
