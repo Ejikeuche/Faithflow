@@ -12,7 +12,7 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-export const ParseOfferingDataInputSchema = z.object({
+const ParseOfferingDataInputSchema = z.object({
   fileData: z
     .string()
     .describe(
@@ -22,7 +22,7 @@ export const ParseOfferingDataInputSchema = z.object({
 });
 export type ParseOfferingDataInput = z.infer<typeof ParseOfferingDataInputSchema>;
 
-export const ParseOfferingDataOutputSchema = z.object({
+const ParseOfferingDataOutputSchema = z.object({
   offerings: z.array(z.object({
     name: z.string().describe("The contributor's full name."),
     email: z.string().describe("The contributor's email address."),
