@@ -80,22 +80,27 @@ export default function ChurchesPage() {
         return;
     }
 
-    if (selectedChurch.id) {
-      // Editing existing church
-      const updatedChurch = await updateChurch(selectedChurch as Church);
-      setChurches(churches.map(c => c.id === updatedChurch.id ? updatedChurch : c));
-      toast({ title: "Church Updated", description: `${updatedChurch.name} has been updated.` });
-    } else {
-      // Adding new church
-      const newChurch = await addChurch(selectedChurch as Omit<Church, 'id'>);
-      setChurches([...churches, newChurch]);
-      toast({ title: "Church Added", description: `${newChurch.name} has been added.` });
+    try {
+      if (selectedChurch.id) {
+        // Editing existing church
+        const updatedChurch = await updateChurch(selectedChurch as Church);
+        setChurches(churches.map(c => c.id === updatedChurch.id ? updatedChurch : c));
+        toast({ title: "Church Updated", description: `${updatedChurch.name} has been updated.` });
+      } else {
+        // Adding new church
+        const newChurch = await addChurch(selectedChurch as Omit<Church, 'id'>);
+        setChurches([...churches, newChurch]);
+        toast({ title: "Church Added", description: `${newChurch.name} has been added.` });
+      }
+      setIsDialogOpen(false);
+      setSelectedChurch(null);
+    } catch (error) {
+       toast({ title: "Error", description: "Could not save church. Please try again.", variant: "destructive" });
+       console.error("Failed to save church:", error);
     }
-    setIsDialogOpen(false);
-    setSelectedChurch(null);
   };
 
-  const handleFieldChange = (field: keyof Omit<Church, 'id' | 'members'>, value: string) => {
+  const handleFieldChange = (field: keyof Omit<Church, 'id' | 'members' | 'status'>, value: string) => {
     if (selectedChurch) {
         setSelectedChurch(prev => prev ? { ...prev, [field]: value } : null);
     }
@@ -186,11 +191,11 @@ export default function ChurchesPage() {
               <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="name" className="text-right">Name</Label>
-                      <Input id="name" value={selectedChurch?.name} onChange={e => handleFieldChange('name', e.target.value)} placeholder="Sanctuary of Grace" className="col-span-3" />
+                      <Input id="name" value={selectedChurch?.name || ''} onChange={e => handleFieldChange('name', e.target.value)} placeholder="Sanctuary of Grace" className="col-span-3" />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="location" className="text-right">Location</Label>
-                      <Input id="location" value={selectedChurch?.location} onChange={e => handleFieldChange('location', e.target.value)} placeholder="New York, NY" className="col-span-3" />
+                      <Input id="location" value={selectedChurch?.location || ''} onChange={e => handleFieldChange('location', e.target.value)} placeholder="New York, NY" className="col-span-3" />
                   </div>
                    <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="members" className="text-right">Members</Label>

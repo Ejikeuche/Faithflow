@@ -21,6 +21,11 @@ export interface Church {
   name: string;
   location: string;
   members: number;
+  status: "Active" | "Inactive";
+  pastor?: string;
+  email?: string;
+  phone?: string;
+  website?: string;
 }
 
 export interface Plan {
