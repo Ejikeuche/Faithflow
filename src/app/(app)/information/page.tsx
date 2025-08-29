@@ -20,21 +20,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -43,7 +33,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/hooks/use-user";
 import type { Information } from "@/lib/types";
@@ -61,28 +50,18 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   getInformation,
-  addInformation,
-  updateInformation,
   deleteInformation,
   archiveInformation,
 } from "@/actions/information-actions";
-
-
-const emptyInformation: Omit<Information, "id" | "createdAt"> = {
-  title: "",
-  content: "",
-  date: new Date().toISOString().split("T")[0],
-  status: "published",
-};
+import { InformationFormDialog } from "@/components/information-form-dialog";
 
 export default function InformationPage() {
   const { user } = useUser();
   const { toast } = useToast();
   const [information, setInformation] = useState<Information[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedItem, setSelectedItem] = useState<Omit<Information, "createdAt"> | Omit<Information, "id" | "createdAt"> | null>(null);
+  const [editingItem, setEditingItem] = useState<Information | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
 
   const fetchInformation = async () => {
     setIsLoading(true);
@@ -103,59 +82,18 @@ export default function InformationPage() {
 
 
   const handleCreateClick = () => {
-    setSelectedItem(emptyInformation);
-    setDialogMode("create");
+    setEditingItem(null);
     setIsDialogOpen(true);
   };
 
   const handleEditClick = (item: Information) => {
-    setSelectedItem({ ...item });
-    setDialogMode("edit");
+    setEditingItem(item);
     setIsDialogOpen(true);
   };
 
-  const handleSave = async () => {
-    if (!selectedItem) return;
-
-    if (!selectedItem.title || !selectedItem.content) {
-      toast({
-        title: "Error",
-        description: "Title and content are required.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      if (dialogMode === "create") {
-        await addInformation(selectedItem as Omit<Information, "id" | "createdAt">);
-        toast({
-          title: "Success",
-          description: "New information has been published.",
-        });
-      } else {
-        await updateInformation(selectedItem as Omit<Information, "createdAt">);
-        toast({
-          title: "Success",
-          description: "Information has been updated.",
-        });
-      }
-      await fetchInformation();
-      setIsDialogOpen(false);
-      setSelectedItem(null);
-    } catch (error) {
-      console.error("Failed to save information:", error);
-      toast({ title: "Error", description: "Could not save information.", variant: "destructive" });
-    }
-  };
-
-  const handleFieldChange = (
-    field: keyof Omit<Information, "id" | "createdAt">,
-    value: string
-  ) => {
-    if (selectedItem) {
-      setSelectedItem((prev) => (prev ? { ...prev, [field]: value } : null));
-    }
+  const handleDialogSave = () => {
+    fetchInformation(); // Refetch after saving
+    setIsDialogOpen(false);
   };
 
   const handleDelete = async (id: string) => {
@@ -319,68 +257,12 @@ export default function InformationPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[625px]">
-          <DialogHeader>
-            <DialogTitle>
-              {dialogMode === "create"
-                ? "Create New Information"
-                : "Edit Information"}
-            </DialogTitle>
-            <DialogDescription>
-              {dialogMode === "create"
-                ? "Fill in the details for the new announcement."
-                : `Update the details for "${selectedItem?.title}".`}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedItem && (
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="title" className="text-right">
-                  Title
-                </Label>
-                <Input
-                  id="title"
-                  value={(selectedItem as Omit<Information, 'id' | 'createdAt'>).title}
-                  onChange={(e) => handleFieldChange("title", e.target.value)}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="date" className="text-right">
-                  Date
-                </Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={(selectedItem as Omit<Information, 'id' | 'createdAt'>).date}
-                  onChange={(e) => handleFieldChange("date", e.target.value)}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-start gap-4">
-                <Label htmlFor="content" className="text-right pt-2">
-                  Content
-                </Label>
-                <Textarea
-                  id="content"
-                  value={(selectedItem as Omit<Information, 'id' | 'createdAt'>).content}
-                  onChange={(e) =>
-                    handleFieldChange("content", e.target.value)
-                  }
-                  className="col-span-3 min-h-[200px]"
-                />
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave}>Save Changes</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <InformationFormDialog
+        isOpen={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        item={editingItem}
+        onSave={handleDialogSave}
+      />
     </div>
   );
 
