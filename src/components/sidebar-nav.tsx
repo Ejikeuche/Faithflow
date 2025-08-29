@@ -8,6 +8,7 @@ import {
   ClipboardCheck,
   HandCoins,
   Church,
+  CreditCard,
 } from "lucide-react";
 import {
   SidebarMenu,
@@ -52,6 +53,12 @@ export function SidebarNav({ role }: SidebarNavProps) {
       label: "Offerings",
       icon: HandCoins,
       roles: ["admin", "superuser"],
+    },
+    {
+      href: "/plans",
+      label: "Plans",
+      icon: CreditCard,
+      roles: ["superuser"],
     },
   ];
 

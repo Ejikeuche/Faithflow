@@ -15,3 +15,13 @@ export interface Church {
   location: string;
   members: number;
 }
+
+export interface Plan {
+  id: string;
+  name: string;
+  memberLimit: {
+    min: number;
+    max: number | null;
+  };
+  price: number;
+}
