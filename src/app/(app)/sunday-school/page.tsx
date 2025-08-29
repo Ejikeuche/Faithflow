@@ -10,17 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useUser } from "@/hooks/use-user";
 import { PlusCircle, Trash2 } from "lucide-react";
 import type { SundaySchoolLesson } from "@/lib/types";
@@ -43,8 +32,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { getLessons, addLesson, updateLesson, deleteLesson } from "@/actions/sunday-school-actions";
+import { getLessons, deleteLesson } from "@/actions/sunday-school-actions";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LessonFormDialog } from "@/components/lesson-form-dialog";
 
 const emptyLesson: Omit<SundaySchoolLesson, "id" | "createdAt"> = {
   title: "",
@@ -53,86 +43,55 @@ const emptyLesson: Omit<SundaySchoolLesson, "id" | "createdAt"> = {
   date: new Date().toISOString().split('T')[0],
 };
 
-type EditableLesson = Omit<SundaySchoolLesson, 'createdAt'> | Omit<SundaySchoolLesson, 'id' | 'createdAt'>;
-
 export default function SundaySchoolPage() {
   const { user } = useUser();
   const { toast } = useToast();
   const [lessons, setLessons] = useState<SundaySchoolLesson[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedLesson, setSelectedLesson] = useState<EditableLesson | null>(null);
+  const [editingLesson, setEditingLesson] = useState<SundaySchoolLesson | null>(null);
+
+  const fetchLessons = async () => {
+    setIsLoading(true);
+    try {
+      const fetchedLessons = await getLessons();
+      setLessons(fetchedLessons);
+    } catch (error) {
+      console.error("Failed to fetch lessons:", error);
+      toast({ title: "Error", description: "Could not fetch lessons.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchLessons = async () => {
-      setIsLoading(true);
-      try {
-        const fetchedLessons = await getLessons();
-        setLessons(fetchedLessons);
-      } catch (error) {
-        console.error("Failed to fetch lessons:", error);
-        toast({ title: "Error", description: "Could not fetch lessons.", variant: "destructive" });
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchLessons();
   }, [toast]);
 
   const handleCreateClick = () => {
-    setSelectedLesson({ ...emptyLesson });
+    setEditingLesson(null);
     setIsDialogOpen(true);
   };
 
   const handleEditClick = (lesson: SundaySchoolLesson) => {
-    const { createdAt, ...editableLesson } = lesson;
-    setSelectedLesson(editableLesson);
+    setEditingLesson(lesson);
     setIsDialogOpen(true);
   };
   
   const handleDelete = async (lessonId: string) => {
      try {
       await deleteLesson(lessonId);
-      setLessons(lessons.filter((l) => l.id !== lessonId));
+      await fetchLessons(); // Refetch to update list
       toast({ title: "Lesson Deleted", description: "The lesson has been removed." });
     } catch (error) {
       console.error("Failed to delete lesson:", error);
       toast({ title: "Error", description: "Could not delete the lesson.", variant: "destructive" });
     }
   }
-
-  const handleSave = async () => {
-    if (!selectedLesson || !selectedLesson.title || !selectedLesson.content) {
-      toast({ title: "Error", description: "Title and content are required.", variant: "destructive" });
-      return;
-    }
-    
-    try {
-      if ('id' in selectedLesson && selectedLesson.id) {
-        const updatedLesson = await updateLesson(selectedLesson as Omit<SundaySchoolLesson, 'createdAt'>);
-        setLessons(lessons.map((l) => (l.id === updatedLesson.id ? updatedLesson : l)));
-        toast({ title: "Lesson Updated", description: "The lesson has been updated." });
-      } else {
-        const newLesson = await addLesson(selectedLesson as Omit<SundaySchoolLesson, 'id' | 'createdAt'>);
-        setLessons([newLesson, ...lessons]);
-        toast({ title: "Lesson Added", description: "A new lesson has been created." });
-      }
-      setIsDialogOpen(false);
-    } catch (error) {
-       console.error("Failed to save lesson:", error);
-       toast({ title: "Error", description: "Could not save the lesson.", variant: "destructive" });
-    }
-  };
-
-  const handleFieldChange = (field: keyof Omit<SundaySchoolLesson, 'id' | 'createdAt'>, value: string) => {
-    setSelectedLesson(prev => prev ? { ...prev, [field]: value } : null);
-  };
   
-  const handleOpenChange = (open: boolean) => {
-    setIsDialogOpen(open);
-    if (!open) {
-      setSelectedLesson(null);
-    }
+  const handleDialogSave = () => {
+    fetchLessons(); // Refetch lessons after a save operation
+    setIsDialogOpen(false);
   }
 
   const parseDate = (dateString: string) => {
@@ -207,72 +166,14 @@ export default function SundaySchoolPage() {
           })}
         </div>
       )}
-
-      <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-[625px]">
-          <DialogHeader>
-            <DialogTitle>{selectedLesson && 'id' in selectedLesson ? 'Edit Lesson' : 'Create New Lesson'}</DialogTitle>
-            <DialogDescription>
-              {selectedLesson && 'id' in selectedLesson ? `Update the details for the ${selectedLesson?.title} lesson.` : 'Fill in the details for the new lesson.'}
-            </DialogDescription>
-          </DialogHeader>
-            {selectedLesson && (
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="lesson-title" className="text-right">
-                    Title
-                  </Label>
-                  <Input
-                    id="lesson-title"
-                    value={selectedLesson.title}
-                    onChange={(e) => handleFieldChange("title", e.target.value)}
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="lesson-description" className="text-right">
-                    Description
-                  </Label>
-                  <Input
-                    id="lesson-description"
-                    value={selectedLesson.description}
-                    onChange={(e) => handleFieldChange("description", e.target.value)}
-                    className="col-span-3"
-                  />
-                </div>
-                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="lesson-date" className="text-right">
-                    Date
-                  </Label>
-                  <Input
-                    id="lesson-date"
-                    type="date"
-                    value={selectedLesson.date}
-                    onChange={(e) => handleFieldChange("date", e.target.value)}
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-start gap-4">
-                  <Label htmlFor="lesson-content" className="text-right pt-2">
-                    Content
-                  </Label>
-                  <Textarea
-                    id="lesson-content"
-                    value={selectedLesson.content}
-                    onChange={(e) => handleFieldChange("content", e.target.value)}
-                    className="col-span-3 min-h-[200px]"
-                  />
-                </div>
-              </div>
-            )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false) }>
-              Cancel
-            </Button>
-            <Button onClick={handleSave}>Save Changes</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      
+      <LessonFormDialog 
+        isOpen={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        lesson={editingLesson}
+        onSave={handleDialogSave}
+      />
+      
     </div>
   );
 
