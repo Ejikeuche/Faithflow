@@ -67,6 +67,7 @@ export interface Offering {
   amount: number;
   date: string;
   type: "Tithe" | "Personal" | "Building" | "Special";
+  createdAt: string;
 }
 
 export interface Information {

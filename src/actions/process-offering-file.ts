@@ -7,6 +7,7 @@ import {
 } from "@/ai/flows/parse-offering-data";
 import { z } from "zod";
 import type { Offering } from "@/lib/types";
+import { addBatchOfferings } from "./offering-actions";
 
 const actionInputSchema = z.object({
   fileData: z.string(),
@@ -16,7 +17,7 @@ const actionInputSchema = z.object({
 type ProcessOfferingFileOutput = {
   success: boolean;
   message: string;
-  parsedData: Omit<Offering, 'id'>[] | null;
+  addedCount: number;
 };
 
 export async function processOfferingFile(
@@ -27,41 +28,41 @@ export async function processOfferingFile(
     return {
       success: false,
       message: "Invalid input provided to processing action.",
-      parsedData: null,
+      addedCount: 0,
     };
   }
 
   try {
-    // Directly parse the data without validation
     const parsedDataResult = await parseOfferingData(parsedInput.data);
 
-    // The AI might still fail to parse, so we check for a valid array
-    if (Array.isArray(parsedDataResult.offerings)) {
-        const validatedParsedData = parsedDataResult.offerings.map(o => ({
+    if (Array.isArray(parsedDataResult.offerings) && parsedDataResult.offerings.length > 0) {
+        const validatedParsedData: Omit<Offering, 'id' | 'createdAt'>[] = parsedDataResult.offerings.map(o => ({
             ...o,
             amount: Number(o.amount)
         }));
 
+        await addBatchOfferings(validatedParsedData);
+
         return {
             success: true,
-            message: "File parsed successfully.",
-            parsedData: validatedParsedData,
+            message: "File parsed and offerings added successfully.",
+            addedCount: validatedParsedData.length,
         };
     }
 
-    // If parsing fails, return an error
     return {
         success: false,
-        message: "AI failed to parse the data from the file. Please check the file for structural issues and try again.",
-        parsedData: null,
+        message: "AI failed to parse the data from the file, or the file was empty. Please check the file for structural issues and try again.",
+        addedCount: 0,
     }
 
   } catch (error) {
     console.error("Error processing offering data:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
     return {
       success: false,
-      message: "An unexpected error occurred during processing. The AI service might be unavailable.",
-      parsedData: null,
+      message: `An unexpected error occurred during processing: ${errorMessage}. The AI service might be unavailable or there's an issue with the database connection.`,
+      addedCount: 0,
     };
   }
 }

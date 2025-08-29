@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { OfferingValidator } from "@/components/offering-validator";
 import { OfferingManager } from "@/components/offering-manager";
 import {
@@ -13,29 +13,38 @@ import {
 } from "@/components/ui/card";
 import type { Offering } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-
-const initialOfferings: Offering[] = [
-  { id: "1", name: "John Doe", email: "john.d@example.com", amount: 150.00, date: "2024-07-21", type: "Tithe" },
-  { id: "2", name: "Jane Smith", email: "jane.s@example.com", amount: 75.50, date: "2024-07-21", type: "Personal" },
-  { id: "3", name: "Sam Wilson", email: "sam.w@example.com", amount: 500.00, date: "2024-07-20", type: "Building" },
-  { id: "4", name: "Emily Brown", email: "emily.b@example.com", amount: 200.00, date: "2024-07-19", type: "Special" },
-];
-
+import { getOfferings } from "@/actions/offering-actions";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function OfferingsPage() {
   const { toast } = useToast();
-  const [offerings, setOfferings] = useState<Offering[]>(initialOfferings);
+  const [offerings, setOfferings] = useState<Offering[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const addUploadedOfferings = (newOfferings: Omit<Offering, 'id'>[]) => {
-    const offeringsToAdd = newOfferings.map((o, i) => ({
-      ...o,
-      id: `uploaded-${Date.now()}-${i}`,
-    }))
-    setOfferings(prev => [...prev, ...offeringsToAdd]);
+  const fetchOfferings = async () => {
+    setIsLoading(true);
+    try {
+      const fetchedOfferings = await getOfferings();
+      setOfferings(fetchedOfferings);
+    } catch (error) {
+      console.error("Failed to fetch offerings:", error);
+      toast({ title: "Error", description: "Could not fetch offering records.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOfferings();
+  }, []);
+
+  const handleUploadSuccess = (addedCount: number) => {
     toast({
       title: "Offerings Added",
-      description: `${newOfferings.length} new offering records have been successfully added from the file.`
-    })
+      description: `${addedCount} new offering records have been successfully added from the file.`
+    });
+    // Refetch the offerings to show the newly added ones
+    fetchOfferings();
   }
 
   return (
@@ -48,10 +57,30 @@ export default function OfferingsPage() {
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-8">
-          <OfferingManager offerings={offerings} setOfferings={setOfferings} toast={toast} />
+          {isLoading ? (
+             <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-1/2" />
+                <Skeleton className="h-4 w-3/4" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <OfferingManager 
+              offerings={offerings} 
+              setOfferings={setOfferings} 
+              refetchOfferings={fetchOfferings} 
+            />
+          )}
         </div>
         <div className="space-y-8">
-          <OfferingValidator onUploadSuccess={addUploadedOfferings} />
+          <OfferingValidator onUploadSuccess={handleUploadSuccess} />
             <Card>
                 <CardHeader>
                     <CardTitle>File Upload Instructions</CardTitle>

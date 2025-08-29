@@ -20,7 +20,7 @@ import {
   TableRow,
   TableFooter
 } from "@/components/ui/table";
-import { MoreHorizontal, PlusCircle } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -34,10 +34,12 @@ import { Label } from "@/components/ui/label";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Offering } from "@/lib/types";
-import { format, isValid, parseISO } from "date-fns";
-import type { useToast } from "@/hooks/use-toast";
+import { format, isValid } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
+import { addOffering, updateOffering, deleteOffering } from "@/actions/offering-actions";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
 
-const emptyOffering: Omit<Offering, 'id'> = {
+const emptyOffering: Omit<Offering, 'id' | 'createdAt'> = {
   name: "",
   email: "",
   amount: 0,
@@ -48,11 +50,12 @@ const emptyOffering: Omit<Offering, 'id'> = {
 interface OfferingManagerProps {
     offerings: Offering[];
     setOfferings: React.Dispatch<React.SetStateAction<Offering[]>>;
-    toast: ReturnType<typeof useToast>['toast'];
+    refetchOfferings: () => Promise<void>;
 }
 
-export function OfferingManager({ offerings, setOfferings, toast }: OfferingManagerProps) {
-  const [selectedOffering, setSelectedOffering] = useState<Omit<Offering, 'id'> & { id?: string } | null>(null);
+export function OfferingManager({ offerings, setOfferings, refetchOfferings }: OfferingManagerProps) {
+  const { toast } = useToast();
+  const [selectedOffering, setSelectedOffering] = useState<Omit<Offering, 'createdAt'> | Omit<Offering, 'id' | 'createdAt'> | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleAddClick = () => {
@@ -65,35 +68,54 @@ export function OfferingManager({ offerings, setOfferings, toast }: OfferingMana
     setIsDialogOpen(true);
   };
   
-  const handleDelete = (offeringId: string) => {
-    setOfferings(offerings.filter(o => o.id !== offeringId));
-    toast({ title: "Offering Deleted", description: "The offering record has been removed." });
+  const handleDelete = async (offeringId: string) => {
+    try {
+      await deleteOffering(offeringId);
+      setOfferings(prev => prev.filter(o => o.id !== offeringId));
+      toast({ title: "Offering Deleted", description: "The offering record has been removed." });
+    } catch (error) {
+      console.error("Failed to delete offering:", error);
+      toast({ title: "Error", description: "Could not delete offering.", variant: "destructive" });
+    }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!selectedOffering?.name || !selectedOffering?.email || !selectedOffering?.date || !selectedOffering.type ) {
         toast({ title: "Error", description: "All fields are required.", variant: "destructive" });
         return;
     }
 
-    if (selectedOffering.id) {
-        setOfferings(offerings.map(o => o.id === selectedOffering.id ? selectedOffering as Offering : o));
+    try {
+      if ('id' in selectedOffering && selectedOffering.id) {
+        // Editing
+        await updateOffering(selectedOffering as Omit<Offering, 'createdAt'>);
         toast({ title: "Offering Updated", description: `The record has been updated.` });
-    } else {
-        const newOffering: Offering = { ...selectedOffering, id: (offerings.length + 1).toString() } as Offering;
-        setOfferings([...offerings, newOffering]);
+      } else {
+        // Adding
+        await addOffering(selectedOffering as Omit<Offering, 'id' | 'createdAt'>);
         toast({ title: "Offering Added", description: `A new offering record has been added.` });
+      }
+      await refetchOfferings();
+      setIsDialogOpen(false);
+      setSelectedOffering(null);
+    } catch (error) {
+        toast({ title: "Error", description: "Could not save the offering record.", variant: "destructive" });
+        console.error("Failed to save offering:", error);
     }
-    setIsDialogOpen(false);
-    setSelectedOffering(null);
   };
 
-  const handleFieldChange = (field: keyof Omit<Offering, 'id'>, value: string | number) => {
+  const handleFieldChange = (field: keyof Omit<Offering, 'id' | 'createdAt' | 'amount'>, value: string) => {
     if (selectedOffering) {
         setSelectedOffering(prev => prev ? { ...prev, [field]: value } : null);
     }
   };
 
+  const handleAmountChange = (value: string) => {
+    if (selectedOffering) {
+        setSelectedOffering(prev => prev ? { ...prev, amount: Number(value) } : null);
+    }
+  };
+  
   const getOfferingTypeVariant = (type: Offering['type']) => {
     switch (type) {
       case 'Tithe': return 'default';
@@ -105,7 +127,11 @@ export function OfferingManager({ offerings, setOfferings, toast }: OfferingMana
   }
   
   const parseDate = (dateString: string) => {
-    const date = parseISO(dateString);
+    // Dates from firestore might be ISO strings, but dates from the input are YYYY-MM-DD
+    const date = new Date(dateString);
+    if (dateString && !dateString.includes('T')) {
+      date.setUTCHours(0,0,0,0);
+    }
     return date;
   }
 
@@ -164,7 +190,25 @@ export function OfferingManager({ offerings, setOfferings, toast }: OfferingMana
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuItem onClick={() => handleEditClick(offering)}>Edit</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDelete(offering.id)} className="text-destructive">Delete</DropdownMenuItem>
+                           <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
+                                  <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                </DropdownMenuItem>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete this offering record.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDelete(offering.id)}>Continue</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -186,9 +230,9 @@ export function OfferingManager({ offerings, setOfferings, toast }: OfferingMana
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
-            <DialogTitle>{selectedOffering?.id ? "Edit Offering Record" : "Add New Offering"}</DialogTitle>
+            <DialogTitle>{selectedOffering && 'id' in selectedOffering ? "Edit Offering Record" : "Add New Offering"}</DialogTitle>
             <DialogDescription>
-              {selectedOffering?.id ? "Update the offering details." : "Fill in the details for the new record."}
+              {selectedOffering && 'id' in selectedOffering ? "Update the offering details." : "Fill in the details for the new record."}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -220,7 +264,7 @@ export function OfferingManager({ offerings, setOfferings, toast }: OfferingMana
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="amount" className="text-right">Amount</Label>
-              <Input id="amount" type="number" min="0" value={selectedOffering?.amount} onChange={(e) => handleFieldChange("amount", Number(e.target.value))} className="col-span-3" />
+              <Input id="amount" type="number" min="0" value={selectedOffering?.amount} onChange={(e) => handleAmountChange(e.target.value)} className="col-span-3" />
             </div>
           </div>
           <DialogFooter>

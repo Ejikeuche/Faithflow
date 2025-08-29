@@ -19,10 +19,9 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { processOfferingFile } from "@/actions/process-offering-file";
-import type { Offering } from "@/lib/types";
 
 interface OfferingValidatorProps {
-    onUploadSuccess: (offerings: Omit<Offering, 'id'>[]) => void;
+    onUploadSuccess: (addedCount: number) => void;
 }
 
 export function OfferingValidator({ onUploadSuccess }: OfferingValidatorProps) {
@@ -70,9 +69,12 @@ export function OfferingValidator({ onUploadSuccess }: OfferingValidatorProps) {
       const fileData = await toBase64(file);
       const result = await processOfferingFile({ fileData, fileType });
       
-      if (result.success && result.parsedData) {
+      if (result.success) {
         setStatus("success");
-        onUploadSuccess(result.parsedData);
+        onUploadSuccess(result.addedCount);
+        setFile(null); // Reset the file input
+        const fileInput = document.getElementById('offering-file') as HTMLInputElement;
+        if(fileInput) fileInput.value = "";
       } else {
         setStatus("error");
         setError(result.message);
