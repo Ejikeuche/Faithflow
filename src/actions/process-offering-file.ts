@@ -41,6 +41,8 @@ export async function processOfferingFile(
     const parseResult = Papa.parse(parsedInput.data.fileData, {
       header: true,
       skipEmptyLines: true,
+      // Make parsing robust by converting headers to lowercase and trimming whitespace
+      transformHeader: (header) => header.toLowerCase().trim(),
     });
 
     if (parseResult.errors.length > 0) {
