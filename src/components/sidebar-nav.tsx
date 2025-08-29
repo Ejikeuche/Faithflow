@@ -58,7 +58,7 @@ export function SidebarNav({ role }: SidebarNavProps) {
       href: "/plans",
       label: "Plans",
       icon: CreditCard,
-      roles: ["superuser"],
+      roles: ["superuser", "admin"],
     },
   ];
 

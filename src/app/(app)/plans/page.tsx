@@ -17,11 +17,22 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { Plan } from "@/lib/types";
+import type { Plan, UserRole } from "@/lib/types";
+import { useUser } from "@/hooks/use-user";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 const initialPlans: Plan[] = [
   {
@@ -45,13 +56,23 @@ const initialPlans: Plan[] = [
 ];
 
 export default function PlansPage() {
+  const { user } = useUser();
+  const { toast } = useToast();
   const [plans, setPlans] = useState<Plan[]>(initialPlans);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSelecting, setIsSelecting] = useState(false);
+  
+  const currentPlanId = "basic"; // Mock current plan for demo
 
   const handleEditClick = (plan: Plan) => {
     setSelectedPlan({ ...plan });
     setIsEditing(true);
+  };
+
+  const handleSelectClick = (plan: Plan) => {
+    setSelectedPlan(plan);
+    setIsSelecting(true);
   };
 
   const handleSave = () => {
@@ -64,13 +85,26 @@ export default function PlansPage() {
     setSelectedPlan(null);
   };
 
+  const handleConfirmSelection = () => {
+    if (selectedPlan) {
+      console.log(`Plan ${selectedPlan.name} selected!`);
+      // Here you would typically make an API call to update the subscription
+      toast({
+        title: "Plan Updated",
+        description: `Your subscription has been updated to the ${selectedPlan.name} plan.`,
+      });
+    }
+    setIsSelecting(false);
+    setSelectedPlan(null);
+  };
+
   const handleFieldChange = (field: keyof Plan, value: any) => {
     if (selectedPlan) {
       setSelectedPlan({ ...selectedPlan, [field]: value });
     }
   };
   
-    const handleMemberLimitChange = (field: 'min' | 'max', value: string) => {
+  const handleMemberLimitChange = (field: 'min' | 'max', value: string) => {
     if (selectedPlan) {
       const numericValue = value === '' ? null : Number(value);
       setSelectedPlan({
@@ -83,18 +117,31 @@ export default function PlansPage() {
     }
   };
 
+  const renderButton = (plan: Plan) => {
+    if (user?.role === "superuser") {
+      return <Button className="w-full" onClick={() => handleEditClick(plan)}>Edit Plan</Button>;
+    }
+    if (user?.role === "admin") {
+      if (plan.id === currentPlanId) {
+        return <Button className="w-full" disabled>Current Plan</Button>;
+      }
+      return <Button className="w-full" onClick={() => handleSelectClick(plan)}>Select Plan</Button>;
+    }
+    return null;
+  }
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Subscription Plans</h1>
         <p className="text-muted-foreground">
-          Manage the subscription plans for churches.
+          {user?.role === 'superuser' ? 'Manage the subscription plans for churches.' : 'Choose the best plan for your church.'}
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
         {plans.map((plan) => (
-          <Card key={plan.id} className="flex flex-col">
+          <Card key={plan.id} className={`flex flex-col ${plan.id === currentPlanId && user?.role === 'admin' ? 'border-primary' : ''}`}>
             <CardHeader>
               <CardTitle>{plan.name}</CardTitle>
               <CardDescription>
@@ -112,14 +159,13 @@ export default function PlansPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button className="w-full" onClick={() => handleEditClick(plan)}>
-                Edit Plan
-              </Button>
+              {renderButton(plan)}
             </CardFooter>
           </Card>
         ))}
       </div>
 
+      {/* Edit Dialog for Superuser */}
       <Dialog open={isEditing} onOpenChange={setIsEditing}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -190,6 +236,23 @@ export default function PlansPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Selection Alert Dialog for Admin */}
+      <AlertDialog open={isSelecting} onOpenChange={setIsSelecting}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Plan Selection</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to switch to the {selectedPlan?.name} plan for ${selectedPlan?.price}/month?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmSelection}>Confirm</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }
