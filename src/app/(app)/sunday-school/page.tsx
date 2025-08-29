@@ -54,13 +54,15 @@ const emptyLesson: Omit<SundaySchoolLesson, "id" | "createdAt"> = {
   date: new Date().toISOString().split('T')[0],
 };
 
+type EditableLesson = Omit<SundaySchoolLesson, 'createdAt'> | Omit<SundaySchoolLesson, 'id' | 'createdAt'>;
+
 export default function SundaySchoolPage() {
   const { user } = useUser();
   const { toast } = useToast();
   const [lessons, setLessons] = useState<SundaySchoolLesson[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedLesson, setSelectedLesson] = useState<Omit<SundaySchoolLesson, 'createdAt'> | Omit<SundaySchoolLesson, 'id' | 'createdAt'> | null>(null);
+  const [selectedLesson, setSelectedLesson] = useState<EditableLesson>(emptyLesson);
 
   useEffect(() => {
     const fetchLessons = async () => {
@@ -84,7 +86,8 @@ export default function SundaySchoolPage() {
   };
 
   const handleEditClick = (lesson: SundaySchoolLesson) => {
-    setSelectedLesson(lesson);
+    const { createdAt, ...editableLesson } = lesson;
+    setSelectedLesson(editableLesson);
     setIsDialogOpen(true);
   };
   
@@ -100,7 +103,7 @@ export default function SundaySchoolPage() {
   }
 
   const handleSave = async () => {
-    if (!selectedLesson?.title || !selectedLesson?.content) {
+    if (!selectedLesson.title || !selectedLesson.content) {
       toast({ title: "Error", description: "Title and content are required.", variant: "destructive" });
       return;
     }
@@ -116,7 +119,6 @@ export default function SundaySchoolPage() {
         toast({ title: "Lesson Added", description: "A new lesson has been created." });
       }
       setIsDialogOpen(false);
-      setSelectedLesson(null);
     } catch (error) {
        console.error("Failed to save lesson:", error);
        toast({ title: "Error", description: "Could not save the lesson.", variant: "destructive" });
@@ -124,10 +126,15 @@ export default function SundaySchoolPage() {
   };
 
   const handleFieldChange = (field: keyof Omit<SundaySchoolLesson, 'id' | 'createdAt'>, value: string) => {
-    if (selectedLesson) {
-      setSelectedLesson(prev => prev ? { ...prev, [field]: value } : null);
-    }
+    setSelectedLesson(prev => ({ ...prev, [field]: value }));
   };
+  
+  const handleOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setSelectedLesson(emptyLesson);
+    }
+  }
 
   const parseDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -202,15 +209,14 @@ export default function SundaySchoolPage() {
         </div>
       )}
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-[625px]">
           <DialogHeader>
-            <DialogTitle>{selectedLesson && 'id' in selectedLesson ? 'Edit Lesson' : 'Create New Lesson'}</DialogTitle>
+            <DialogTitle>{'id' in selectedLesson ? 'Edit Lesson' : 'Create New Lesson'}</DialogTitle>
             <DialogDescription>
-              {selectedLesson && 'id' in selectedLesson ? `Update the details for the ${selectedLesson?.title} lesson.` : 'Fill in the details for the new lesson.'}
+              {'id' in selectedLesson ? `Update the details for the ${selectedLesson?.title} lesson.` : 'Fill in the details for the new lesson.'}
             </DialogDescription>
           </DialogHeader>
-          {selectedLesson && (
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="lesson-title" className="text-right">
@@ -258,7 +264,6 @@ export default function SundaySchoolPage() {
                 />
               </div>
             </div>
-          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false) }>
               Cancel
@@ -317,3 +322,5 @@ export default function SundaySchoolPage() {
   
   return user?.role === "admin" || user?.role === "superuser" ? <AdminView /> : <MemberView />;
 }
+
+    
