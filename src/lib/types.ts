@@ -47,6 +47,7 @@ export interface SundaySchoolLesson {
     description: string;
     content: string;
     date: string;
+    createdAt: string;
 }
 
 export interface AttendanceRecord {

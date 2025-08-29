@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useUser } from "@/hooks/use-user";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Trash2 } from "lucide-react";
 import type { SundaySchoolLesson } from "@/lib/types";
 import {
   Accordion,
@@ -32,73 +32,110 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { format, isValid } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { getLessons, addLesson, updateLesson, deleteLesson } from "@/actions/sunday-school-actions";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const initialLessons: SundaySchoolLesson[] = [
-  {
-    id: "1",
-    title: "The Story of Creation",
-    description: "Genesis 1-2. A look at the beginning of the world.",
-    content: "In the beginning, God created the heavens and the earth... The lesson will explore the seven days of creation and the significance of God's work. We will discuss the concepts of creation ex nihilo (out of nothing) and the role of humanity as stewards of creation.",
-    date: "2024-07-21"
-  },
-  {
-    id: "2",
-    title: "The Faith of Abraham",
-    description: "Genesis 12, 15, 22. Understanding faith and promises.",
-    content: "This lesson follows the journey of Abraham, from his call to leave his home to the ultimate test of his faith. We will examine the covenant God made with Abraham and how his story is a cornerstone of faith for millions.",
-    date: "2024-07-28"
-  },
-  {
-    id: "3",
-    title: "The Sermon on the Mount",
-    description: "Matthew 5-7. The core teachings of Jesus.",
-    content: "An in-depth study of one of the most famous sermons ever given. We will break down the Beatitudes, the Lord's Prayer, and Jesus' teachings on anger, lust, prayer, and judging others. The focus will be on practical application in daily life.",
-    date: "2024-08-04"
-  },
-];
+const emptyLesson: Omit<SundaySchoolLesson, "id" | "createdAt"> = {
+  title: "",
+  description: "",
+  content: "",
+  date: new Date().toISOString().split('T')[0],
+};
 
 export default function SundaySchoolPage() {
   const { user } = useUser();
-  const [lessons, setLessons] = useState<SundaySchoolLesson[]>(initialLessons);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
-  const [selectedLesson, setSelectedLesson] = useState<SundaySchoolLesson | null>(null);
+  const { toast } = useToast();
+  const [lessons, setLessons] = useState<SundaySchoolLesson[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedLesson, setSelectedLesson] = useState<Omit<SundaySchoolLesson, 'createdAt'> | Omit<SundaySchoolLesson, 'id' | 'createdAt'> | null>(null);
 
-  const handleEditClick = (lesson: SundaySchoolLesson) => {
-    setSelectedLesson({ ...lesson });
-    setIsEditing(true);
-  };
+  useEffect(() => {
+    const fetchLessons = async () => {
+      setIsLoading(true);
+      try {
+        const fetchedLessons = await getLessons();
+        setLessons(fetchedLessons);
+      } catch (error) {
+        console.error("Failed to fetch lessons:", error);
+        toast({ title: "Error", description: "Could not fetch lessons.", variant: "destructive" });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchLessons();
+  }, [toast]);
 
   const handleCreateClick = () => {
-    setSelectedLesson({ id: ``, title: "", description: "", content: "", date: new Date().toISOString().split('T')[0] });
-    setIsCreating(true);
-  }
-
-  const handleSave = () => {
-    if (selectedLesson) {
-        if(isCreating) {
-            setLessons([...lessons, {...selectedLesson, id: (lessons.length + 1).toString()}]);
-        } else {
-             setLessons(
-                lessons.map((l) => (l.id === selectedLesson.id ? selectedLesson : l))
-             );
-        }
-    }
-    setIsEditing(false);
-    setIsCreating(false);
-    setSelectedLesson(null);
+    setSelectedLesson(emptyLesson);
+    setIsDialogOpen(true);
   };
 
-  const handleFieldChange = (field: keyof SundaySchoolLesson, value: any) => {
+  const handleEditClick = (lesson: SundaySchoolLesson) => {
+    setSelectedLesson(lesson);
+    setIsDialogOpen(true);
+  };
+  
+  const handleDelete = async (lessonId: string) => {
+     try {
+      await deleteLesson(lessonId);
+      setLessons(lessons.filter((l) => l.id !== lessonId));
+      toast({ title: "Lesson Deleted", description: "The lesson has been removed." });
+    } catch (error) {
+      console.error("Failed to delete lesson:", error);
+      toast({ title: "Error", description: "Could not delete the lesson.", variant: "destructive" });
+    }
+  }
+
+  const handleSave = async () => {
+    if (!selectedLesson?.title || !selectedLesson?.content) {
+      toast({ title: "Error", description: "Title and content are required.", variant: "destructive" });
+      return;
+    }
+    
+    try {
+      if ('id' in selectedLesson && selectedLesson.id) {
+        const updatedLesson = await updateLesson(selectedLesson as Omit<SundaySchoolLesson, 'createdAt'>);
+        setLessons(lessons.map((l) => (l.id === updatedLesson.id ? updatedLesson : l)));
+        toast({ title: "Lesson Updated", description: "The lesson has been updated." });
+      } else {
+        const newLesson = await addLesson(selectedLesson as Omit<SundaySchoolLesson, 'id' | 'createdAt'>);
+        setLessons([newLesson, ...lessons]);
+        toast({ title: "Lesson Added", description: "A new lesson has been created." });
+      }
+      setIsDialogOpen(false);
+      setSelectedLesson(null);
+    } catch (error) {
+       console.error("Failed to save lesson:", error);
+       toast({ title: "Error", description: "Could not save the lesson.", variant: "destructive" });
+    }
+  };
+
+  const handleFieldChange = (field: keyof Omit<SundaySchoolLesson, 'id' | 'createdAt'>, value: string) => {
     if (selectedLesson) {
-      setSelectedLesson({ ...selectedLesson, [field]: value });
+      setSelectedLesson(prev => prev ? { ...prev, [field]: value } : null);
     }
   };
 
   const parseDate = (dateString: string) => {
-    const [year, month, day] = dateString.split('-').map(Number);
-    return new Date(year, month - 1, day);
-  }
+    const date = new Date(dateString);
+    if (dateString && !dateString.includes('T')) {
+      date.setUTCHours(0, 0, 0, 0);
+    }
+    return date;
+  };
   
   const AdminView = () => (
     <div className="space-y-8">
@@ -115,35 +152,62 @@ export default function SundaySchoolPage() {
             </Button>
         </div>
       
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-        {lessons.map((lesson) => {
-          const date = parseDate(lesson.date);
-          return (
-            <Card key={lesson.id} className="flex flex-col">
-              <CardHeader>
-                <CardTitle>{lesson.title}</CardTitle>
-                <CardDescription>{lesson.description}</CardDescription>
-                <CardDescription className="pt-2 text-xs text-muted-foreground">
-                  {isValid(date) ? format(date, "MMMM d, yyyy") : 'No date'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex-grow">
-                <p className="text-sm text-muted-foreground line-clamp-3">{lesson.content}</p>
-              </CardContent>
-              <CardFooter>
-                <Button className="w-full" onClick={() => handleEditClick(lesson)}>Edit Lesson</Button>
-              </CardFooter>
-            </Card>
-          );
-        })}
-      </div>
+      {isLoading ? (
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+          {lessons.map((lesson) => {
+            const date = parseDate(lesson.date);
+            return (
+              <Card key={lesson.id} className="flex flex-col">
+                <CardHeader>
+                  <CardTitle>{lesson.title}</CardTitle>
+                  <CardDescription>{lesson.description}</CardDescription>
+                  <CardDescription className="pt-2 text-xs text-muted-foreground">
+                    {isValid(date) ? format(date, "MMMM d, yyyy") : 'No date'}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex-grow">
+                  <p className="text-sm text-muted-foreground line-clamp-3">{lesson.content}</p>
+                </CardContent>
+                <CardFooter className="flex justify-between gap-2">
+                  <Button className="w-full" onClick={() => handleEditClick(lesson)}>Edit Lesson</Button>
+                  <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="icon">
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete this lesson.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(lesson.id)}>Continue</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                </CardFooter>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
-      <Dialog open={isEditing || isCreating} onOpenChange={isCreating ? setIsCreating : setIsEditing}>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[625px]">
           <DialogHeader>
-            <DialogTitle>{isCreating ? 'Create New Lesson' : 'Edit Lesson'}</DialogTitle>
+            <DialogTitle>{selectedLesson && 'id' in selectedLesson ? 'Edit Lesson' : 'Create New Lesson'}</DialogTitle>
             <DialogDescription>
-              {isCreating ? 'Fill in the details for the new lesson.' : `Update the details for the ${selectedLesson?.title} lesson.`}
+              {selectedLesson && 'id' in selectedLesson ? `Update the details for the ${selectedLesson?.title} lesson.` : 'Fill in the details for the new lesson.'}
             </DialogDescription>
           </DialogHeader>
           {selectedLesson && (
@@ -196,7 +260,7 @@ export default function SundaySchoolPage() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsEditing(false); setIsCreating(false); }}>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false) }>
               Cancel
             </Button>
             <Button onClick={handleSave}>Save Changes</Button>
@@ -220,24 +284,32 @@ export default function SundaySchoolPage() {
                 <CardDescription>Click on a lesson to expand and read the material.</CardDescription>
             </CardHeader>
             <CardContent>
-                <Accordion type="single" collapsible className="w-full">
-                    {lessons.map(lesson => {
-                      const date = parseDate(lesson.date);
-                      return (
-                        <AccordionItem value={lesson.id} key={lesson.id}>
-                            <AccordionTrigger>
-                                <div className="text-left">
-                                    <h3 className="font-semibold">{lesson.title}</h3>
-                                    <p className="text-sm text-muted-foreground">{lesson.description}</p>
-                                    <p className="pt-2 text-xs text-muted-foreground">{isValid(date) ? format(date, "MMMM d, yyyy") : 'No date'}</p>
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="prose prose-sm max-w-none text-muted-foreground">
-                                {lesson.content}
-                            </AccordionContent>
-                        </AccordionItem>
-                    )})}
-                </Accordion>
+                {isLoading ? (
+                  <div className="space-y-4">
+                    <Skeleton className="h-14 w-full" />
+                    <Skeleton className="h-14 w-full" />
+                    <Skeleton className="h-14 w-full" />
+                  </div>
+                ) : (
+                  <Accordion type="single" collapsible className="w-full">
+                      {lessons.map(lesson => {
+                        const date = parseDate(lesson.date);
+                        return (
+                          <AccordionItem value={lesson.id} key={lesson.id}>
+                              <AccordionTrigger>
+                                  <div className="text-left">
+                                      <h3 className="font-semibold">{lesson.title}</h3>
+                                      <p className="text-sm text-muted-foreground">{lesson.description}</p>
+                                      <p className="pt-2 text-xs text-muted-foreground">{isValid(date) ? format(date, "MMMM d, yyyy") : 'No date'}</p>
+                                  </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="prose prose-sm max-w-none text-muted-foreground">
+                                  {lesson.content}
+                              </AccordionContent>
+                          </AccordionItem>
+                      )})}
+                  </Accordion>
+                )}
             </CardContent>
         </Card>
     </div>
