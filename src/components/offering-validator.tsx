@@ -17,6 +17,7 @@ import {
   Upload,
   FileCheck2,
   AlertCircle,
+  ListX,
 } from "lucide-react";
 import { processOfferingFile } from "@/actions/process-offering-file";
 
@@ -24,50 +25,59 @@ interface OfferingValidatorProps {
     onUploadSuccess: (addedCount: number) => void;
 }
 
+interface ProcessError {
+    row: number;
+    message: string;
+}
+
 export function OfferingValidator({ onUploadSuccess }: OfferingValidatorProps) {
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [error, setError] = useState<string | null>(null);
+  const [errorTitle, setErrorTitle] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<ProcessError[]>([]);
+
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       setFile(selectedFile);
       setStatus("idle");
-      setError(null);
+      setErrorMessage(null);
+      setErrorDetails([]);
     }
   };
 
-  const toBase64 = (file: File): Promise<string> =>
+  const readFileAsText = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve((reader.result as string).split(",")[1]);
+      reader.readAsText(file);
+      reader.onload = () => resolve(reader.result as string);
       reader.onerror = (error) => reject(error);
     });
 
   const handleProcessFile = async () => {
     if (!file) {
-      setError("Please select a file first.");
+      setErrorTitle("No File Selected");
+      setErrorMessage("Please select a file first.");
+      setStatus('error');
       return;
     }
 
-    const fileType = file.name.endsWith(".csv")
-      ? "csv"
-      : file.name.endsWith(".xlsx") || file.name.endsWith(".xls")
-      ? "excel"
-      : null;
-    if (!fileType) {
-      setError("Invalid file type. Please upload a CSV or Excel file.");
+    if (!file.name.endsWith(".csv")) {
+      setErrorTitle("Invalid File Type");
+      setErrorMessage("Please upload a CSV file.");
+      setStatus('error');
       return;
     }
 
     setStatus("loading");
-    setError(null);
+    setErrorMessage(null);
+    setErrorDetails([]);
 
     try {
-      const fileData = await toBase64(file);
-      const result = await processOfferingFile({ fileData, fileType });
+      const fileData = await readFileAsText(file);
+      const result = await processOfferingFile({ fileData });
       
       if (result.success) {
         setStatus("success");
@@ -77,12 +87,17 @@ export function OfferingValidator({ onUploadSuccess }: OfferingValidatorProps) {
         if(fileInput) fileInput.value = "";
       } else {
         setStatus("error");
-        setError(result.message);
+        setErrorTitle("Processing Failed");
+        setErrorMessage(result.message);
+        if (result.errors) {
+            setErrorDetails(result.errors);
+        }
       }
     } catch (e) {
       const err =
         e instanceof Error ? e.message : "An unknown error occurred.";
-      setError(err);
+      setErrorMessage(err);
+      setErrorTitle("An Unexpected Error Occurred");
       setStatus("error");
     }
   };
@@ -90,9 +105,9 @@ export function OfferingValidator({ onUploadSuccess }: OfferingValidatorProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>AI Offering Parser</CardTitle>
+        <CardTitle>Bulk Offering Upload</CardTitle>
         <CardDescription>
-          Upload a CSV or Excel file to add multiple offering records at once.
+          Upload a CSV file to add multiple offering records at once.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -102,7 +117,7 @@ export function OfferingValidator({ onUploadSuccess }: OfferingValidatorProps) {
               id="offering-file"
               type="file"
               onChange={handleFileChange}
-              accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+              accept=".csv"
             />
           </div>
           <Button onClick={handleProcessFile} disabled={!file || status === "loading"}>
@@ -115,11 +130,21 @@ export function OfferingValidator({ onUploadSuccess }: OfferingValidatorProps) {
           </Button>
         </div>
 
-        {status === 'error' && error && (
+        {status === 'error' && errorMessage && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Processing Failed</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
+            <AlertTitle>{errorTitle || 'Error'}</AlertTitle>
+            <AlertDescription>{errorMessage}</AlertDescription>
+            {errorDetails.length > 0 && (
+                <div className="mt-4 text-xs">
+                    <h4 className="font-bold mb-2">Error Details:</h4>
+                    <ul className="space-y-1 max-h-24 overflow-y-auto">
+                        {errorDetails.map((err, index) => (
+                           <li key={index}><span className="font-semibold">Row {err.row}:</span> {err.message}</li> 
+                        ))}
+                    </ul>
+                </div>
+            )}
           </Alert>
         )}
         
@@ -136,7 +161,7 @@ export function OfferingValidator({ onUploadSuccess }: OfferingValidatorProps) {
         {status === "loading" && (
           <div className="flex items-center justify-center p-8 text-muted-foreground rounded-lg bg-secondary">
             <Loader2 className="h-8 w-8 animate-spin mr-4" />
-            <span>Analyzing your file with AI...</span>
+            <span>Processing your file...</span>
           </div>
         )}
       </CardContent>
