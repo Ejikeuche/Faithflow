@@ -1,7 +1,7 @@
 
 "use server";
 
-import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
+import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import { serverTimestamp } from "firebase/firestore";
 
 interface AuthResult {
@@ -16,10 +16,7 @@ export async function signUpUser(
   password: string
 ): Promise<AuthResult> {
   try {
-    const auth = getAdminAuth();
-    const adminDb = getAdminDb();
-
-    const userRecord = await auth.createUser({
+    const userRecord = await adminAuth.createUser({
       email,
       password,
     });
@@ -45,7 +42,10 @@ export async function signUpUser(
         errorMessage = "An account with this email address already exists.";
     } else if (error.code === 'auth/weak-password') {
         errorMessage = "The password is too weak. It must be at least 6 characters long.";
-    } else {
+    } else if (error.code === 'auth/insufficient-permission') {
+        errorMessage = "The server has insufficient permission. Please check your project's IAM settings.";
+    }
+    else {
         errorMessage = error.message;
     }
     console.error("Sign up error:", error);

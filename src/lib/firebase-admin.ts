@@ -1,17 +1,11 @@
 
 import admin from 'firebase-admin';
 
-const initializeAdminApp = () => {
-    if (!admin.apps.length) {
-        admin.initializeApp();
-    }
-    return {
-        auth: admin.auth(),
-        db: admin.firestore(),
-    };
-};
+// Check if the app is already initialized to prevent errors
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
 
-// Export a getter function for db and auth
-// This allows for lazy initialization
-export const getAdminAuth = () => initializeAdminApp().auth;
-export const getAdminDb = () => initializeAdminApp().db;
+// Export the initialized services
+export const adminAuth = admin.auth();
+export const adminDb = admin.firestore();
