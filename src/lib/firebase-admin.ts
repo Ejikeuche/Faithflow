@@ -1,12 +1,16 @@
 
 import admin from 'firebase-admin';
 
+const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+
 // Check if the app is already initialized to prevent errors
 if (!admin.apps.length) {
   try {
-    // In a managed environment like App Hosting, this will automatically
-    // discover the credentials and initialize the SDK.
-    admin.initializeApp();
+    admin.initializeApp({
+        projectId,
+        // In a managed environment, service account is discovered automatically.
+        // Specifying projectId ensures it connects to the correct project.
+    });
   } catch (error) {
     console.error('Firebase admin initialization error:', error);
   }
