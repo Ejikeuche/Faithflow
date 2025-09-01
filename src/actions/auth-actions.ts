@@ -43,7 +43,7 @@ export async function signUpUser(
     } else if (error.code === 'auth/weak-password') {
         errorMessage = "The password is too weak. It must be at least 6 characters long.";
     } else if (error.code) {
-        // This will catch codes like 'auth/insufficient-permission'
+        // This will catch codes like 'auth/insufficient-permission' and 'app/invalid-credential'
         errorMessage = `An error occurred during sign-up: ${error.message} (code: ${error.code})`;
     }
     else {
