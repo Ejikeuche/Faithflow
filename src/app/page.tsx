@@ -17,7 +17,9 @@ import { Church, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { signInUser } from "@/actions/auth-actions";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+
 
 export default function LoginPage() {
   const router = useRouter();
@@ -30,21 +32,28 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const result = await signInUser(email, password);
-      if (result.success) {
-        toast({ title: "Success", description: "Logged in successfully." });
-        router.push("/dashboard");
-      } else {
-        toast({
-          title: "Login Failed",
-          description: result.error || "An unknown error occurred.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
+      await signInWithEmailAndPassword(auth, email, password);
+      toast({ title: "Success", description: "Logged in successfully." });
+      router.push("/dashboard");
+    } catch (error: any) {
+       let errorMessage = "An unknown error occurred.";
+        switch (error.code) {
+            case 'auth/user-not-found':
+                errorMessage = "No user found with this email. Please sign up.";
+                break;
+            case 'auth/wrong-password':
+                errorMessage = "Incorrect password. Please try again.";
+                break;
+            case 'auth/invalid-credential':
+                 errorMessage = "Invalid credentials. Please check your email and password.";
+                 break;
+            default:
+                errorMessage = error.message;
+                break;
+        }
       toast({
-        title: "Error",
-        description: "An unexpected error occurred during login.",
+        title: "Login Failed",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -92,7 +101,7 @@ export default function LoginPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Password</Label>
-                  <Button
+                   <Button
                     type="button"
                     variant="link"
                     className="h-auto p-0 text-xs"
