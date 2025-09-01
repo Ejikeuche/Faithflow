@@ -3,11 +3,11 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read and write access to any collection for any authenticated user.
-    // This is a common and secure starting point for apps where all users
-    // who can sign in are considered trusted administrators.
+    // Allow public read and write access to all collections.
+    // This is for demonstration purposes as there is no real authentication.
+    // For a production app, you would secure this with user authentication rules.
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if true;
     }
   }
 }
