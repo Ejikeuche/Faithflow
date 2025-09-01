@@ -1,41 +1,19 @@
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Plans can be read by anyone, but not written to from the client.
+    
+    // Allow public read access to plans so anyone can see them
     match /plans/{planId} {
       allow read: if true;
-      allow write: if false;
+      allow write: if request.auth != null; // Allow logged-in users to write (for superuser)
     }
 
-    // Members can be managed by authenticated users (future-proofing for auth)
-    match /members/{memberId} {
-      allow read, write: if request.auth != null;
-    }
-
-    // Churches can be managed by authenticated users
-    match /churches/{churchId} {
-      allow read, write: if request.auth != null;
-    }
-
-    // Attendance can be managed by authenticated users
-    match /attendance/{recordId} {
-      allow read, write: if request.auth != null;
-    }
-    
-    // Offerings can be managed by authenticated users
-    match /offerings/{offeringId} {
-        allow read, write: if request.auth != null;
-    }
-    
-    // Sunday school lessons can be read/written by authenticated users
-    match /sundaySchoolLessons/{lessonId} {
-        allow read, write: if request.auth != null;
-    }
-
-    // Information can be read by anyone, but only written by authenticated users
-    match /information/{infoId} {
-        allow read: if true;
-        allow write: if request.auth != null;
+    // Allow authenticated users to read and write to all other collections
+    // This is a secure default for a logged-in-only app.
+    match /{path=**}/{documentId} {
+       allow read, write: if request.auth != null;
     }
   }
 }
