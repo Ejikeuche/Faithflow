@@ -1,13 +1,8 @@
 
 "use server";
 
-import { auth, db as adminDb } from "@/lib/firebase-admin";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-
-// Note: For this demo, we're not creating corresponding user documents in Firestore.
-// In a real application, you would typically create a user document in a 'users'
-// collection in Firestore upon successful sign-up to store additional user profile
-// information and roles.
+import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
+import { serverTimestamp } from "firebase/firestore";
 
 interface AuthResult {
   success: boolean;
@@ -21,6 +16,9 @@ export async function signUpUser(
   password: string
 ): Promise<AuthResult> {
   try {
+    const auth = getAdminAuth();
+    const adminDb = getAdminDb();
+
     const userRecord = await auth.createUser({
       email,
       password,
@@ -50,6 +48,7 @@ export async function signUpUser(
     } else {
         errorMessage = error.message;
     }
+    console.error("Sign up error:", error);
     return { success: false, error: errorMessage };
   }
 }

@@ -1,11 +1,17 @@
 
 import admin from 'firebase-admin';
 
-// Initialize the Firebase Admin SDK.
-// This will use Application Default Credentials (ADC) in the cloud environment.
-if (!admin.apps.length) {
-  admin.initializeApp();
-}
+const initializeAdminApp = () => {
+    if (!admin.apps.length) {
+        admin.initializeApp();
+    }
+    return {
+        auth: admin.auth(),
+        db: admin.firestore(),
+    };
+};
 
-export const auth = admin.auth();
-export const db = admin.firestore();
+// Export a getter function for db and auth
+// This allows for lazy initialization
+export const getAdminAuth = () => initializeAdminApp().auth;
+export const getAdminDb = () => initializeAdminApp().db;
