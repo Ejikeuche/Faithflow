@@ -13,15 +13,24 @@ import { Label } from "@/components/ui/label";
 import { Church } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from 'react';
+import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { toast } = useToast();
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     // In a real app, you'd handle authentication here
     // For this demo, we'll simulate roles based on email
     router.push("/dashboard");
+  };
+
+  const handleForgotPassword = () => {
+    toast({
+      title: "Password Reset",
+      description: "If an account with this email exists, a password reset link has been sent.",
+    });
   };
 
   return (
@@ -52,7 +61,17 @@ export default function LoginPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="h-auto p-0 text-xs"
+                    onClick={handleForgotPassword}
+                  >
+                    Forgot Password?
+                  </Button>
+                </div>
                 <Input
                   id="password"
                   type="password"
