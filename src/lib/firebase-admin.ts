@@ -1,12 +1,16 @@
 
 import admin from 'firebase-admin';
+import { ServiceAccount } from 'firebase-admin';
 
 // Check if the app is already initialized to prevent errors
 if (!admin.apps.length) {
-  admin.initializeApp({
-    // Explicitly provide the projectId to ensure correct authentication
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  });
+  try {
+    admin.initializeApp({
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    });
+  } catch (error: any) {
+    console.error('Firebase admin initialization error', error.stack);
+  }
 }
 
 // Export the initialized services
