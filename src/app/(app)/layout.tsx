@@ -26,19 +26,9 @@ import { UserProvider } from "@/hooks/use-user";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const [user, setUser] = useState<UserType>({ name: "Super User", email: "superuser@faithflow.com", role: "superuser" });
-
-  // In a real app, this would be derived from a session.
-  // We simulate role changes for the demo.
-  const handleRoleChange = (role: UserRole) => {
-    if (role === 'admin') {
-      setUser({ name: "Admin User", email: "admin@faithflow.com", role: "admin" });
-    } else if (role === 'member') {
-      setUser({ name: "Member User", email: "member@faithflow.com", role: "member" });
-    } else {
-      setUser({ name: "Super User", email: "superuser@faithflow.com", role: "superuser" });
-    }
-  };
+  // For this demo, we'll default to a single user type after login.
+  // In a real app, this would be fetched from an authentication service.
+  const [user, setUser] = useState<UserType>({ name: "Admin User", email: "admin@faithflow.com", role: "admin" });
 
   return (
     <UserProvider user={user}>
@@ -84,11 +74,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                       </p>
                     </div>
                   </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                   <DropdownMenuLabel>Change Role (Demo)</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => handleRoleChange('superuser')}>Superuser</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleRoleChange('admin')}>Admin</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleRoleChange('member')}>Member</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => router.push('/')}>
                     <LogOut className="mr-2 h-4 w-4" />
