@@ -1,18 +1,15 @@
 
 import admin from 'firebase-admin';
 
-const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-
-// Check if the app is already initialized to prevent errors
+// This is the recommended pattern for initializing the Firebase Admin SDK in a Next.js app.
+// It ensures that the SDK is initialized only once.
 if (!admin.apps.length) {
   try {
     admin.initializeApp({
-        projectId,
-        // In a managed environment, service account is discovered automatically.
-        // Specifying projectId ensures it connects to the correct project.
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
     });
-  } catch (error) {
-    console.error('Firebase admin initialization error:', error);
+  } catch (error: any) {
+    console.error('Firebase admin initialization error', error.stack);
   }
 }
 
