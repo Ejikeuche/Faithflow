@@ -3,12 +3,12 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  "projectId": "faithflow-t96q6",
-  "appId": "1:530381876615:web:c88f51b1b746b2b8e23722",
-  "storageBucket": "faithflow-t96q6.firebasestorage.app",
-  "apiKey": "AIzaSyDWAhGS3hIxQP9sAAr6PqWiLFsKcFRrpQM",
-  "authDomain": "faithflow-t96q6.firebaseapp.com",
-  "messagingSenderId": "530381876615"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
 // Initialize Firebase
