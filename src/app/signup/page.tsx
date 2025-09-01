@@ -17,26 +17,38 @@ import { Church, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { signInUser } from "@/actions/auth-actions";
+import { signUpUser } from "@/actions/auth-actions";
 
-export default function LoginPage() {
+export default function SignUpPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (password !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Passwords do not match.",
+        variant: "destructive",
+      });
+      return;
+    }
     setIsLoading(true);
     try {
-      const result = await signInUser(email, password);
+      const result = await signUpUser(email, password);
       if (result.success) {
-        toast({ title: "Success", description: "Logged in successfully." });
-        router.push("/dashboard");
+        toast({
+          title: "Account Created",
+          description: "Your account has been successfully created. Please sign in.",
+        });
+        router.push("/");
       } else {
         toast({
-          title: "Login Failed",
+          title: "Sign Up Failed",
           description: result.error || "An unknown error occurred.",
           variant: "destructive",
         });
@@ -44,20 +56,12 @@ export default function LoginPage() {
     } catch (error) {
       toast({
         title: "Error",
-        description: "An unexpected error occurred during login.",
+        description: "An unexpected error occurred during sign up.",
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleForgotPassword = () => {
-    toast({
-      title: "Password Reset",
-      description:
-        "If an account with this email exists, a password reset link has been sent.",
-    });
   };
 
   return (
@@ -70,13 +74,13 @@ export default function LoginPage() {
         </div>
         <Card className="shadow-2xl">
           <CardHeader className="text-center">
-            <CardTitle className="font-headline text-3xl">FaithFlow</CardTitle>
+            <CardTitle className="font-headline text-3xl">Create an Account</CardTitle>
             <CardDescription>
-              Welcome back! Please sign in to your account.
+              Enter your details to get started with FaithFlow.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleSignUp} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -90,42 +94,42 @@ export default function LoginPage() {
                 />
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  <Button
-                    type="button"
-                    variant="link"
-                    className="h-auto p-0 text-xs"
-                    onClick={handleForgotPassword}
-                  >
-                    Forgot Password?
-                  </Button>
-                </div>
+                <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
                   type="password"
                   required
+                  minLength={6}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password">Confirm Password</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                Sign In
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Create Account
               </Button>
             </form>
           </CardContent>
           <CardFooter className="justify-center text-sm">
             <p>
-              Don't have an account?{" "}
+              Already have an account?{" "}
               <Link
-                href="/signup"
+                href="/"
                 className="font-semibold text-primary underline-offset-4 hover:underline"
               >
-                Sign up
+                Sign in
               </Link>
             </p>
           </CardFooter>

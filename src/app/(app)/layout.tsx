@@ -1,5 +1,6 @@
+
 "use client";
-import { type ReactNode, useState, useEffect, createContext } from "react";
+import { type ReactNode, useState, useEffect } from "react";
 import {
   SidebarProvider,
   Sidebar,
@@ -19,16 +20,59 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Church, LogOut, Settings, User } from "lucide-react";
+import { Church, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { User as UserType, UserRole } from "@/lib/types";
+import type { User as UserType } from "@/lib/types";
 import { UserProvider } from "@/hooks/use-user";
+import { auth } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { signOutUser } from "@/actions/auth-actions";
+import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
-  // For this demo, we'll default to a single user type after login.
-  // In a real app, this would be fetched from an authentication service.
-  const [user, setUser] = useState<UserType>({ name: "Admin User", email: "admin@faithflow.com", role: "admin" });
+  const { toast } = useToast();
+  const [user, setUser] = useState<UserType | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+      if (authUser) {
+        // For this app, we'll assume a single role after login.
+        // A real app might fetch roles from Firestore or a custom claim.
+        setUser({
+          name: authUser.displayName || "User",
+          email: authUser.email || "",
+          role: "admin", // Default role for any logged-in user
+        });
+      } else {
+        setUser(null);
+        router.push("/");
+      }
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [router]);
+
+  const handleLogout = async () => {
+    try {
+      await signOutUser();
+      toast({ title: "Logged Out", description: "You have been successfully logged out." });
+      router.push("/");
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to log out.", variant: "destructive" });
+    }
+  };
+
+  if (isLoading || !user) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <UserProvider user={user}>
@@ -47,10 +91,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             </div>
             
             <div className="flex items-center gap-4">
-               <div className="text-sm hidden sm:block">
-                  <span className="text-muted-foreground">Signed in as: </span>
-                  <span className="font-semibold capitalize">{user.role}</span>
-                </div>
+              <div className="text-sm hidden sm:block">
+                <span className="text-muted-foreground">Signed in as: </span>
+                <span className="font-semibold capitalize">{user.role}</span>
+              </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
@@ -75,7 +119,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => router.push('/')}>
+                  <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Log out</span>
                   </DropdownMenuItem>
@@ -87,5 +131,24 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </SidebarInset>
       </SidebarProvider>
     </UserProvider>
+  );
+}
+
+function Loader2(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
   );
 }

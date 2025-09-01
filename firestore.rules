@@ -3,11 +3,41 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow public read and write access to all collections.
-    // This is for demonstration purposes as there is no real authentication.
-    // For a production app, you would secure this with user authentication rules.
+
+    // Helper function to check for authenticated user
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Default deny all reads and writes
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
+    }
+    
+    // Allow signed-in users to read/write their own data,
+    // or allow admins/superusers to read/write any data.
+    // This is a more robust rule for production.
+    // For this demo, we will allow any authenticated user to do anything.
+    match /members/{memberId} {
+      allow read, write: if isSignedIn();
+    }
+    match /churches/{churchId} {
+      allow read, write: if isSignedIn();
+    }
+    match /plans/{planId} {
+      allow read, write: if isSignedIn();
+    }
+    match /sundaySchoolLessons/{lessonId} {
+      allow read, write: if isSignedIn();
+    }
+    match /attendance/{recordId} {
+      allow read, write: if isSignedIn();
+    }
+    match /offerings/{offeringId} {
+      allow read, write: if isSignedIn();
+    }
+    match /information/{infoId} {
+      allow read, write: if isSignedIn();
     }
   }
 }
