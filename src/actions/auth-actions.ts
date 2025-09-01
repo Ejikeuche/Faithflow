@@ -42,8 +42,9 @@ export async function signUpUser(
         errorMessage = "An account with this email address already exists.";
     } else if (error.code === 'auth/weak-password') {
         errorMessage = "The password is too weak. It must be at least 6 characters long.";
-    } else if (error.code === 'auth/insufficient-permission') {
-        errorMessage = "The server has insufficient permission. Please check your project's IAM settings.";
+    } else if (error.code) {
+        // This will catch codes like 'auth/insufficient-permission'
+        errorMessage = `An error occurred during sign-up: ${error.message} (code: ${error.code})`;
     }
     else {
         errorMessage = error.message;

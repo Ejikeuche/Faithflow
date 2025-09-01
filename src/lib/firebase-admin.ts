@@ -1,6 +1,5 @@
 
 import admin from 'firebase-admin';
-import { ServiceAccount } from 'firebase-admin';
 
 // Check if the app is already initialized to prevent errors
 if (!admin.apps.length) {
