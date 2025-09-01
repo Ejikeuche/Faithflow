@@ -3,9 +3,7 @@ import admin from 'firebase-admin';
 
 if (!admin.apps.length) {
   try {
-    admin.initializeApp({
-      credential: admin.credential.applicationDefault(),
-    });
+    admin.initializeApp();
   } catch (error: any) {
     console.error('Firebase admin initialization error', error.stack);
   }
