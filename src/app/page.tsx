@@ -63,9 +63,6 @@ export default function LoginPage() {
               <Button type="submit" className="w-full">
                 Sign In
               </Button>
-               <p className="text-xs text-center text-muted-foreground pt-2">
-                Use superuser@faithflow.com, admin@faithflow.com, or member@faithflow.com to test roles.
-              </p>
             </form>
           </CardContent>
         </Card>
