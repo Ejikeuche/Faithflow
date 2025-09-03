@@ -1,6 +1,6 @@
 
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
-import { serverTimestamp } from "firebase/firestore";
+import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -19,6 +19,7 @@ export async function POST(request: Request) {
       password,
     });
 
+    // When a user signs up, create a corresponding document in the 'members' collection
     const memberData = {
       name: email.split("@")[0], // Default name from email
       email: email,
@@ -26,9 +27,10 @@ export async function POST(request: Request) {
       joined: new Date().toISOString().split("T")[0],
       phone: "",
       address: "",
-      createdAt: serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
     };
     
+    // Use the user's UID from Auth as the document ID in Firestore
     await adminDb.collection("members").doc(userRecord.uid).set(memberData);
 
     return NextResponse.json({ success: true, uid: userRecord.uid });
