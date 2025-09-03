@@ -1,6 +1,5 @@
 
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
-import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -27,7 +26,7 @@ export async function POST(request: Request) {
       joined: new Date().toISOString().split("T")[0],
       phone: "",
       address: "",
-      createdAt: FieldValue.serverTimestamp(),
+      createdAt: new Date().toISOString(), // Use a standard ISO string instead of a server timestamp
     };
     
     // Use the user's UID from Auth as the document ID in Firestore
