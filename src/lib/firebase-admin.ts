@@ -1,13 +1,17 @@
 
 import admin from 'firebase-admin';
+import { ServiceAccount } from 'firebase-admin';
 
-// This is the recommended pattern for initializing the Firebase Admin SDK in a Next.js app.
-// It ensures that the SDK is initialized only once.
 if (!admin.apps.length) {
   try {
-    // When running in a Google Cloud environment (like App Hosting), 
-    // initializeApp() with no arguments will automatically use Application Default Credentials.
-    admin.initializeApp();
+    const serviceAccount: ServiceAccount = {
+        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+        privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    }
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
   } catch (error: any) {
     console.error('Firebase admin initialization error', error.stack);
   }
