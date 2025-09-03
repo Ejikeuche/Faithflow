@@ -1,6 +1,8 @@
 
 "use server";
 
+import { headers } from "next/headers";
+
 interface AuthResult {
   success: boolean;
   error?: string;
@@ -13,8 +15,8 @@ export async function signUpUser(
   password: string
 ): Promise<AuthResult> {
   try {
-    // Use a relative URL for the API endpoint, as the client and server are on the same domain.
-    const response = await fetch('/api/auth/signup', {
+    const origin = headers().get("origin");
+    const response = await fetch(`${origin}/api/auth/signup`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
