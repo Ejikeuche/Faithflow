@@ -1,7 +1,6 @@
 
 // src/instrumentation.ts
 import admin from 'firebase-admin';
-import type { ServiceAccount } from 'firebase-admin';
 
 export async function register() {
   // This function is executed once on the server when the application starts.
