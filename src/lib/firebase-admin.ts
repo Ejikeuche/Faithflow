@@ -5,9 +5,9 @@ import admin from 'firebase-admin';
 // It ensures that the SDK is initialized only once.
 if (!admin.apps.length) {
   try {
-    admin.initializeApp({
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    });
+    // When running in a Google Cloud environment (like App Hosting), 
+    // initializeApp() with no arguments will automatically use Application Default Credentials.
+    admin.initializeApp();
   } catch (error: any) {
     console.error('Firebase admin initialization error', error.stack);
   }
