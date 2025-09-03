@@ -34,6 +34,10 @@ export async function signUpUser(
     return result;
   } catch (error: any) {
     console.error("Sign up action error:", error);
+    // This catches network errors or cases where response.json() fails (like getting HTML back)
+     if (error instanceof SyntaxError) {
+      return { success: false, error: "Received an invalid response from the server. Please try again."};
+    }
     return { success: false, error: error.message || "An unexpected error occurred." };
   }
 }
