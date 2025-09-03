@@ -13,22 +13,20 @@ export async function signUpUser(
   password: string
 ): Promise<AuthResult> {
   try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/signup`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      }
-    );
+    // Use a relative URL for the API endpoint, as the client and server are on the same domain.
+    const response = await fetch('/api/auth/signup', {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, password }),
+    });
 
     const result = await response.json();
 
     if (!response.ok) {
-        // If the server responded with an error status, use the error message from the response body
-        return { success: false, error: result.error || "An unknown error occurred." };
+      // If the server responded with an error status, use the error message from the response body
+      return { success: false, error: result.error || "An unknown error occurred." };
     }
 
     return result;
