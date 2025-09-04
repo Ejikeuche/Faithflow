@@ -17,7 +17,8 @@ import { Church, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { signUpUser } from "@/actions/auth-actions";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -39,24 +40,31 @@ export default function SignUpPage() {
     }
     setIsLoading(true);
     try {
-      const result = await signUpUser(email, password);
-      if (result.success) {
-        toast({
-          title: "Account Created",
-          description: "Your account has been successfully created. Please sign in.",
-        });
-        router.push("/");
-      } else {
-        toast({
-          title: "Sign Up Failed",
-          description: result.error || "An unknown error occurred.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
+      await createUserWithEmailAndPassword(auth, email, password);
       toast({
-        title: "Error",
-        description: "An unexpected error occurred during sign up.",
+        title: "Account Created",
+        description: "Your account has been successfully created. Please sign in.",
+      });
+      router.push("/");
+    } catch (error: any) {
+      let errorMessage = "An unknown error occurred.";
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          errorMessage = "This email address is already in use.";
+          break;
+        case 'auth/weak-password':
+          errorMessage = "The password is too weak. It must be at least 6 characters long.";
+          break;
+        case 'auth/invalid-email':
+            errorMessage = "The email address is not valid.";
+            break;
+        default:
+          errorMessage = error.message;
+          break;
+      }
+      toast({
+        title: "Sign Up Failed",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

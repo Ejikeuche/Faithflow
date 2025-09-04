@@ -26,11 +26,10 @@ export async function POST(request: Request) {
       joined: new Date().toISOString().split("T")[0],
       phone: "",
       address: "",
-      createdAt: new Date().toISOString(), // Use a standard ISO string
+      createdAt: new Date().toISOString(),
     };
     
     // Use the user's UID from Auth as the document ID in Firestore
-    // This is the correct way to link Auth users to Firestore data
     await adminDb.collection("members").doc(userRecord.uid).set(memberData);
 
     return NextResponse.json({ success: true, uid: userRecord.uid });
