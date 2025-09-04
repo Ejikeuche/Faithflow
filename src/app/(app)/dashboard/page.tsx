@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, HandCoins, Church, UserCheck } from "lucide-react";
+import { Users, HandCoins, Church, UserCheck, Cake } from "lucide-react";
 import Image from "next/image";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
@@ -15,9 +15,10 @@ import {
 import { useUser } from "@/hooks/use-user";
 import type { Member, Offering, AttendanceRecord, Church as ChurchType } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { subMonths, format, startOfMonth } from 'date-fns';
+import { subMonths, format, startOfMonth, getMonth, parseISO } from 'date-fns';
 import { db } from "@/lib/firebase";
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const toMemberObject = (doc: any): Member => ({ id: doc.id, ...doc.data() } as Member);
 const toOfferingObject = (doc: any): Offering => ({ id: doc.id, ...doc.data() } as Offering);
@@ -51,6 +52,7 @@ export default function DashboardPage() {
   const [churches, setChurches] = useState<ChurchType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [memberTotalOffering, setMemberTotalOffering] = useState<number>(0);
+  const [upcomingBirthdays, setUpcomingBirthdays] = useState<Member[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -78,10 +80,28 @@ export default function DashboardPage() {
         setAttendanceRecords(attendanceData);
         setChurches(churchesData);
 
-        if (user?.role === 'member' && user.email) {
-            const memberOfferings = offeringsData.filter(o => o.email === user.email);
-            const total = memberOfferings.reduce((acc, o) => acc + o.amount, 0);
-            setMemberTotalOffering(total);
+        if (user?.role === 'member') {
+            if(user.email) {
+                const memberOfferings = offeringsData.filter(o => o.email === user.email);
+                const total = memberOfferings.reduce((acc, o) => acc + o.amount, 0);
+                setMemberTotalOffering(total);
+            }
+
+            const currentMonth = getMonth(new Date());
+            const birthdays = membersData
+              .filter(member => {
+                if (!member.dob) return false;
+                // The DOB is stored as YYYY-MM-DD, which parseISO handles correctly
+                // even without a time component by treating it as UTC midnight.
+                const birthDate = parseISO(member.dob);
+                return getMonth(birthDate) === currentMonth;
+              })
+              .sort((a, b) => {
+                 const dateA = parseISO(a.dob!);
+                 const dateB = parseISO(b.dob!);
+                 return dateA.getDate() - dateB.getDate();
+              });
+            setUpcomingBirthdays(birthdays);
         }
 
       } catch (error) {
@@ -155,7 +175,7 @@ export default function DashboardPage() {
             <Skeleton className="h-80 w-full" />
          </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -200,7 +220,8 @@ export default function DashboardPage() {
           </>
         )}
         {user?.role === 'member' && (
-            <Card>
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4 col-span-4">
+            <Card className="lg:col-span-4">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Your Total Offering</CardTitle>
                     <HandCoins className="h-4 w-4 text-muted-foreground" />
@@ -210,6 +231,39 @@ export default function DashboardPage() {
                     <p className="text-xs text-muted-foreground">Thank you for your generosity!</p>
                 </CardContent>
             </Card>
+            <Card className="lg:col-span-8">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Cake className="h-5 w-5 text-primary"/>
+                        Upcoming Birthdays This Month
+                    </CardTitle>
+                    <CardDescription>Celebrating our members!</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {upcomingBirthdays.length > 0 ? (
+                    <ul className="space-y-3">
+                        {upcomingBirthdays.map(member => {
+                            const birthDate = parseISO(member.dob!);
+                            return (
+                            <li key={member.id} className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                <Avatar className="h-9 w-9">
+                                    <AvatarImage src={`https://avatar.vercel.sh/${member.email}.png`} alt={member.name} />
+                                    <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <span className="font-medium">{member.name}</span>
+                                </div>
+                                <span className="text-sm text-muted-foreground">{format(birthDate, 'MMMM d')}</span>
+                            </li>
+                            )
+                        })}
+                    </ul>
+                    ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">No birthdays this month.</p>
+                    )}
+                </CardContent>
+            </Card>
+          </div>
         )}
          {user?.role === 'superuser' && (
            <>
@@ -302,7 +356,7 @@ export default function DashboardPage() {
                 <CardHeader>
                     <CardTitle>Church Membership</CardTitle>
                     <CardDescription>Membership numbers across all churches.</CardDescription>
-                </CardHeader>
+                </Header>
                 <CardContent>
                     <ChartContainer config={churchMembershipChartConfig} className="h-[350px] w-full">
                         <BarChart accessibilityLayer data={churches} layout="vertical" margin={{ left: 10 }}>
