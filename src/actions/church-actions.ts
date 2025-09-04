@@ -11,6 +11,9 @@ const toChurchObject = (doc: FirebaseFirestore.DocumentSnapshot): Church => {
     if (!data) {
         throw new Error(`Church document ${doc.id} has no data.`);
     }
+    // Handle Firestore Timestamp
+    const createdAt = data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString();
+
     return {
         id: doc.id,
         name: data.name,
@@ -21,7 +24,7 @@ const toChurchObject = (doc: FirebaseFirestore.DocumentSnapshot): Church => {
         email: data.email,
         phone: data.phone,
         website: data.website,
-        createdAt: data.createdAt.toDate().toISOString(),
+        createdAt: createdAt,
     };
 };
 
