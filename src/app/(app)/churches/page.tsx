@@ -28,15 +28,16 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, PlusCircle } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import type { Church } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUser } from "@/hooks/use-user";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, orderBy, query, addDoc, updateDoc, doc, serverTimestamp } from "firebase/firestore";
+import { collection, getDocs, orderBy, query, addDoc, updateDoc, doc, serverTimestamp, deleteDoc } from "firebase/firestore";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 const emptyChurch: Omit<Church, 'id' | 'createdAt'> = {
   name: "",
@@ -143,6 +144,33 @@ export default function ChurchesPage() {
       })
   }
 
+  const handleStatusChange = async (church: Church) => {
+    const newStatus = church.status === "Active" ? "Inactive" : "Active";
+    try {
+      const churchRef = doc(db, "churches", church.id);
+      await updateDoc(churchRef, {
+        status: newStatus,
+        updatedAt: serverTimestamp()
+      });
+      toast({ title: "Status Updated", description: `${church.name} is now ${newStatus}.` });
+      fetchChurches();
+    } catch (error) {
+      toast({ title: "Error", description: "Could not update status.", variant: "destructive" });
+      console.error("Failed to update status:", error);
+    }
+  };
+
+  const handleDelete = async (churchId: string) => {
+    try {
+      await deleteDoc(doc(db, "churches", churchId));
+      toast({ title: "Church Deleted", description: "The church has been successfully deleted." });
+      fetchChurches();
+    } catch (error) {
+      toast({ title: "Error", description: "Could not delete church.", variant: "destructive" });
+      console.error("Failed to delete church:", error);
+    }
+  };
+
   return (
     <div className="space-y-8">
        <div>
@@ -187,7 +215,7 @@ export default function ChurchesPage() {
                     <TableCell>
                       <Badge variant={church.status === 'Active' ? 'default' : 'secondary'}>{church.status}</Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button aria-haspopup="true" size="icon" variant="ghost">
@@ -197,8 +225,30 @@ export default function ChurchesPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => handleEditClick(church)}>Edit</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleViewDetails(church)}>View Details</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEditClick(church)}>Edit Details</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleStatusChange(church)}>
+                            Set as {church.status === 'Active' ? 'Inactive' : 'Active'}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                           <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
+                                 <Trash2 className="mr-2 h-4 w-4" /> Delete Church
+                                </DropdownMenuItem>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete the church and all its associated data.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDelete(church.id)}>Continue</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -257,3 +307,5 @@ export default function ChurchesPage() {
     </div>
   );
 }
+
+    
