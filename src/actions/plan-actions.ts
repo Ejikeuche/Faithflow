@@ -5,8 +5,6 @@ import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { Plan } from '@/lib/types';
 
-const plansCollection = adminDb.collection('plans');
-
 const initialPlans: Omit<Plan, 'id'>[] = [
   {
     name: "Basic",
@@ -38,6 +36,7 @@ const toPlanObject = (doc: FirebaseFirestore.DocumentSnapshot): Plan => {
 
 // Initialize Plans
 async function initializePlans(): Promise<Plan[]> {
+    const plansCollection = adminDb.collection('plans');
     const batch = adminDb.batch();
     const createdPlans: Plan[] = [];
 
@@ -45,7 +44,7 @@ async function initializePlans(): Promise<Plan[]> {
 
     initialPlans.forEach((planData, index) => {
         const planId = planIds[index];
-        const docRef = adminDb.collection('plans').doc(planId);
+        const docRef = plansCollection.doc(planId);
         const data = { ...planData, createdAt: FieldValue.serverTimestamp() };
         batch.set(docRef, data);
         createdPlans.push({ ...planData, id: planId });
@@ -58,6 +57,7 @@ async function initializePlans(): Promise<Plan[]> {
 
 // READ
 export async function getPlans(): Promise<Plan[]> {
+  const plansCollection = adminDb.collection('plans');
   const snapshot = await plansCollection.get();
   if (snapshot.empty) {
       // If no plans exist, initialize them
@@ -71,6 +71,7 @@ export async function getPlans(): Promise<Plan[]> {
 
 // UPDATE
 export async function updatePlan(planData: Plan): Promise<Plan> {
+  const plansCollection = adminDb.collection('plans');
   const { id, ...dataToUpdate } = planData;
   const planRef = plansCollection.doc(id);
 
