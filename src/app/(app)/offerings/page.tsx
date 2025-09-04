@@ -101,7 +101,7 @@ export default function OfferingsPage() {
                 <CardHeader>
                     <CardTitle>File Upload Instructions</CardTitle>
                     <CardDescription>
-                        Ensure your CSV or Excel file has a header row and the following columns (order does not matter):
+                        Ensure your CSV file has a header row and the following columns (order does not matter):
                     </CardDescription>
                 </CardHeader>
                 <CardContent>

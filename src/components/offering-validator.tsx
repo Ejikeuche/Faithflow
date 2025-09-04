@@ -17,7 +17,6 @@ import {
   Upload,
   FileCheck2,
   AlertCircle,
-  ListX,
 } from "lucide-react";
 import Papa from "papaparse";
 import { z } from "zod";

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -15,7 +16,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import type { SundaySchoolLesson } from "@/lib/types";
-import { addLesson, updateLesson } from "@/actions/sunday-school-actions";
+import { db } from "@/lib/firebase";
+import { addDoc, collection, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 
 const emptyLesson: Omit<SundaySchoolLesson, "id" | "createdAt"> = {
   title: "",
@@ -37,8 +39,6 @@ export function LessonFormDialog({ isOpen, onOpenChange, lesson, onSave }: Lesso
 
   useEffect(() => {
     if (isOpen) {
-      // When the dialog opens, initialize the form data
-      // If we are editing a lesson, use its data, otherwise use the empty lesson object
       setFormData(lesson ? { ...lesson } : emptyLesson);
     }
   }, [isOpen, lesson]);
@@ -56,11 +56,18 @@ export function LessonFormDialog({ isOpen, onOpenChange, lesson, onSave }: Lesso
     
     try {
       if (lesson) { // We are editing an existing lesson
-        const lessonToUpdate = { ...formData, id: lesson.id };
-        await updateLesson(lessonToUpdate);
+        const lessonRef = doc(db, "sundaySchoolLessons", lesson.id);
+        const { id, ...dataToUpdate } = formData;
+        await updateDoc(lessonRef, {
+            ...dataToUpdate,
+            updatedAt: serverTimestamp()
+        });
         toast({ title: "Lesson Updated", description: "The lesson has been updated." });
       } else { // We are creating a new lesson
-        await addLesson(formData);
+        await addDoc(collection(db, "sundaySchoolLessons"), {
+            ...formData,
+            createdAt: serverTimestamp()
+        });
         toast({ title: "Lesson Added", description: "A new lesson has been created." });
       }
       onSave(); // This will trigger a refetch on the parent page

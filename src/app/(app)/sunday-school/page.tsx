@@ -33,11 +33,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { deleteLesson } from "@/actions/sunday-school-actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LessonFormDialog } from "@/components/lesson-form-dialog";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { collection, getDocs, orderBy, query, doc, deleteDoc } from "firebase/firestore";
 
 
 const toLessonObject = (doc: any): SundaySchoolLesson => {
@@ -91,7 +90,7 @@ export default function SundaySchoolPage() {
   
   const handleDelete = async (lessonId: string) => {
      try {
-      await deleteLesson(lessonId);
+      await deleteDoc(doc(db, "sundaySchoolLessons", lessonId));
       await fetchLessons(); // Refetch to update list
       toast({ title: "Lesson Deleted", description: "The lesson has been removed." });
     } catch (error) {
@@ -219,7 +218,7 @@ export default function SundaySchoolPage() {
                                   <div className="text-left">
                                       <h3 className="font-semibold">{lesson.title}</h3>
                                       <p className="text-sm text-muted-foreground">{lesson.description}</p>
-                                      <p className="pt-2 text-xs text-muted-foreground">{isValid(date) ? format(date, "MMMM d, yyyy") : 'No date'}</p>
+                                      <p className="pt-2 text-xs text-muted-foreground">{isValid(date) ? format(date, "MMMM d, yyy4") : 'No date'}</p>
                                   </div>
                               </AccordionTrigger>
                               <AccordionContent className="prose prose-sm max-w-none text-muted-foreground">

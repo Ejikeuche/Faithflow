@@ -32,33 +32,9 @@ const toChurchObject = (doc: FirebaseFirestore.DocumentSnapshot): Church => {
     };
 };
 
-// CREATE
-export async function addChurch(churchData: Omit<Church, 'id' | 'createdAt'>): Promise<Church> {
-  const docRef = await churchesCollection.add({
-    ...churchData,
-    createdAt: FieldValue.serverTimestamp(),
-  });
-  // Fetch the document back to get the server-generated timestamp
-  const newDoc = await docRef.get();
-  return toChurchObject(newDoc);
-}
-
 // READ
 export async function getChurches(): Promise<Church[]> {
   const q = churchesCollection.orderBy("createdAt", "desc");
   const snapshot = await q.get();
   return snapshot.docs.map(toChurchObject);
-}
-
-// UPDATE
-export async function updateChurch(churchData: Omit<Church, 'createdAt'>): Promise<Church> {
-    const { id, ...dataToUpdate } = churchData;
-    const churchRef = churchesCollection.doc(id);
-
-    await churchRef.update({
-        ...dataToUpdate,
-        updatedAt: FieldValue.serverTimestamp()
-    });
-    const updatedDoc = await churchRef.get();
-    return toChurchObject(updatedDoc);
 }
