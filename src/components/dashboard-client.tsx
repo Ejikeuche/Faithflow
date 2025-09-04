@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react";
@@ -346,25 +347,25 @@ export function DashboardClient() {
             <CardContent>
               <ChartContainer config={attendanceChartConfig} className="h-[250px] w-full">
                 <BarChart accessibilityLayer data={chartData}>
-                    <CartesianGrid vertical={false} />
-                    <XAxis
-                      dataKey="month"
-                      tickLine={false}
-                      axisLine={false}
-                      tickMargin={8}
-                      tickFormatter={(value) => value.slice(0, 3)}
-                    />
-                    <ChartTooltip
-                      cursor={false}
-                      content={<ChartTooltipContent indicator="dot" />}
-                    />
-                    <Bar
-                      dataKey="average"
-                      fill="hsl(var(--primary))"
-                      radius={4}
-                    />
-                  </BarChart>
-                </Container>
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey="month"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    tickFormatter={(value) => value.slice(0, 3)}
+                  />
+                  <ChartTooltip
+                    cursor={false}
+                    content={<ChartTooltipContent indicator="dot" />}
+                  />
+                  <Bar
+                    dataKey="average"
+                    fill="hsl(var(--primary))"
+                    radius={4}
+                  />
+                </BarChart>
+              </ChartContainer>
             </CardContent>
           </Card>
         </div>
@@ -417,3 +418,5 @@ export function DashboardClient() {
     </div>
   );
 }
+
+    
