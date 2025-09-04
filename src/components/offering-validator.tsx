@@ -19,7 +19,11 @@ import {
   AlertCircle,
   ListX,
 } from "lucide-react";
-import { processOfferingFile } from "@/actions/process-offering-file";
+import Papa from "papaparse";
+import { z } from "zod";
+import type { Offering } from "@/lib/types";
+import { db } from "@/lib/firebase";
+import { collection, writeBatch, doc, serverTimestamp } from "firebase/firestore";
 
 interface OfferingValidatorProps {
     onUploadSuccess: (addedCount: number) => void;
@@ -29,6 +33,30 @@ interface ProcessError {
     row: number;
     message: string;
 }
+
+const offeringSchema = z.object({
+  name: z.string().trim().min(1, "Name is required."),
+  email: z.string().email("Invalid email address."),
+  amount: z.coerce.number().positive("Amount must be a positive number."),
+  date: z.string().refine((val) => !isNaN(Date.parse(val)), "Invalid date format."),
+  type: z.enum(["Tithe", "Personal", "Building", "Special"]),
+});
+
+async function addBatchOfferings(offeringsData: Omit<Offering, 'id' | 'createdAt'>[]): Promise<void> {
+    const batch = writeBatch(db);
+    const offeringsCollectionRef = collection(db, 'offerings');
+
+    offeringsData.forEach(offering => {
+        const docRef = doc(offeringsCollectionRef); // Create a new doc with a random ID
+        batch.set(docRef, {
+            ...offering,
+            createdAt: serverTimestamp()
+        });
+    });
+
+    await batch.commit();
+}
+
 
 export function OfferingValidator({ onUploadSuccess }: OfferingValidatorProps) {
   const [file, setFile] = useState<File | null>(null);
@@ -47,14 +75,6 @@ export function OfferingValidator({ onUploadSuccess }: OfferingValidatorProps) {
       setErrorDetails([]);
     }
   };
-
-  const readFileAsText = (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsText(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = (error) => reject(error);
-    });
 
   const handleProcessFile = async () => {
     if (!file) {
@@ -75,31 +95,67 @@ export function OfferingValidator({ onUploadSuccess }: OfferingValidatorProps) {
     setErrorMessage(null);
     setErrorDetails([]);
 
-    try {
-      const fileData = await readFileAsText(file);
-      const result = await processOfferingFile({ fileData });
-      
-      if (result.success) {
-        setStatus("success");
-        onUploadSuccess(result.addedCount);
-        setFile(null); // Reset the file input
-        const fileInput = document.getElementById('offering-file') as HTMLInputElement;
-        if(fileInput) fileInput.value = "";
-      } else {
-        setStatus("error");
-        setErrorTitle("Processing Failed");
-        setErrorMessage(result.message);
-        if (result.errors) {
-            setErrorDetails(result.errors);
+    Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (header) => header.toLowerCase().trim(),
+        complete: async (results) => {
+            if (results.errors.length > 0) {
+                setStatus("error");
+                setErrorTitle("Parsing Failed");
+                setErrorMessage("Failed to parse CSV file. Please check the file format.");
+                setErrorDetails(results.errors.map(e => ({ row: e.row, message: e.message })));
+                return;
+            }
+
+            const validationErrors: { row: number; message: string }[] = [];
+            const validOfferings: Omit<Offering, "id" | "createdAt">[] = [];
+
+            for (const [index, row] of (results.data as any[]).entries()) {
+                const result = offeringSchema.safeParse(row);
+                if (result.success) {
+                    validOfferings.push(result.data);
+                } else {
+                    const errorMessage = result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+                    validationErrors.push({ row: index + 2, message: errorMessage });
+                }
+            }
+            
+            if (validationErrors.length > 0) {
+                setStatus("error");
+                setErrorTitle("Validation Failed");
+                setErrorMessage("Some rows had validation errors. Please fix them and try again.");
+                setErrorDetails(validationErrors);
+                return;
+            }
+
+            if (validOfferings.length > 0) {
+                try {
+                    await addBatchOfferings(validOfferings);
+                    setStatus("success");
+                    onUploadSuccess(validOfferings.length);
+                    setFile(null); // Reset the file input
+                    const fileInput = document.getElementById('offering-file') as HTMLInputElement;
+                    if(fileInput) fileInput.value = "";
+                } catch(e) {
+                     const err = e instanceof Error ? e.message : "An unknown error occurred during database operation.";
+                     setStatus("error");
+                     setErrorTitle("Database Error");
+                     setErrorMessage(err);
+                }
+            } else {
+                setStatus("error");
+                setErrorTitle("No Data");
+                setErrorMessage("No valid offering records were found in the file.");
+            }
+        },
+        error: (error) => {
+             const err = error instanceof Error ? error.message : "An unknown error occurred during file parsing.";
+             setStatus("error");
+             setErrorTitle("Parsing Error");
+             setErrorMessage(err);
         }
-      }
-    } catch (e) {
-      const err =
-        e instanceof Error ? e.message : "An unknown error occurred.";
-      setErrorMessage(err);
-      setErrorTitle("An Unexpected Error Occurred");
-      setStatus("error");
-    }
+    });
   };
 
   return (
