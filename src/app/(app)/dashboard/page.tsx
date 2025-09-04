@@ -56,6 +56,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+      
       setIsLoading(true);
       try {
         const [
@@ -111,18 +116,8 @@ export default function DashboardPage() {
       }
     };
     
-    if (user) {
-        fetchData();
-    }
+    fetchData();
   }, [user]);
-
-  const totalMembersAdmin = members.length;
-  const totalOfferingAdmin = offerings.reduce((acc, o) => acc + o.amount, 0);
-  const averageAttendanceAdmin = attendanceRecords.length > 0
-      ? Math.round(attendanceRecords.reduce((acc, r) => acc + r.total, 0) / attendanceRecords.length)
-      : 0;
-      
-  const totalMembersSuperuser = churches.reduce((acc, church) => acc + church.members, 0);
 
   const processChartData = () => {
     const now = new Date();
@@ -165,6 +160,14 @@ export default function DashboardPage() {
   };
 
   const chartData = processChartData();
+  
+  const totalMembersAdmin = members.length;
+  const totalOfferingAdmin = offerings.reduce((acc, o) => acc + o.amount, 0);
+  const averageAttendanceAdmin = attendanceRecords.length > 0
+      ? Math.round(attendanceRecords.reduce((acc, r) => acc + r.total, 0) / attendanceRecords.length)
+      : 0;
+      
+  const totalMembersSuperuser = churches.reduce((acc, church) => acc + church.members, 0);
 
   if (isLoading) {
     return (
@@ -332,7 +335,7 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>Attendance Analytics</CardTitle>
               <CardDescription>Average attendance over the last 6 months.</CardDescription>
-            </CardHeader>
+            </Header>
             <CardContent>
               <ChartContainer config={attendanceChartConfig} className="h-[250px] w-full">
                 <BarChart accessibilityLayer data={chartData}>
