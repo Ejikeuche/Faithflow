@@ -23,6 +23,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 const toMemberObject = (doc: any): Member => ({ id: doc.id, ...doc.data() } as Member);
 const toOfferingObject = (doc: any): Offering => ({ id: doc.id, ...doc.data() } as Offering);
 const toAttendanceRecordObject = (doc: any): AttendanceRecord => ({ id: doc.id, ...doc.data() } as AttendanceRecord);
+const toChurchObject = (doc: any): ChurchType => ({ id: doc.id, ...doc.data() } as ChurchType);
+
 
 const offeringChartConfig = {
   total: {
@@ -64,35 +66,34 @@ export function DashboardClient({ initialChurches }: DashboardClientProps) {
         return;
       }
       
-      // Only set loading for client-side fetches
-      if (user.role !== 'superuser') {
-        setIsLoading(true);
-      } else {
-        setChurches(initialChurches);
-        setIsLoading(false); // For superuser, church data is already loaded
-      }
+      setIsLoading(true);
 
       try {
-        // All roles need to fetch their respective data that isn't pre-loaded
         const promises = [
             getDocs(query(collection(db, 'members'), orderBy("createdAt", "desc"))),
             getDocs(query(collection(db, 'offerings'), orderBy("date", "desc"))),
             getDocs(query(collection(db, 'attendance'), orderBy("date", "desc"))),
         ];
 
-        const [
-          membersSnapshot,
-          offeringsSnapshot,
-          attendanceSnapshot,
-        ] = await Promise.all(promises);
+        // Superuser also needs to fetch churches
+        if (user.role === 'superuser') {
+            promises.push(getDocs(query(collection(db, 'churches'), orderBy("createdAt", "desc"))));
+        }
+
+        const snapshots = await Promise.all(promises);
         
-        const membersData = membersSnapshot.docs.map(toMemberObject);
-        const offeringsData = offeringsSnapshot.docs.map(toOfferingObject);
-        const attendanceData = attendanceSnapshot.docs.map(toAttendanceRecordObject);
+        const membersData = (snapshots[0] as any).docs.map(toMemberObject);
+        const offeringsData = (snapshots[1] as any).docs.map(toOfferingObject);
+        const attendanceData = (snapshots[2] as any).docs.map(toAttendanceRecordObject);
         
         setMembers(membersData);
         setOfferings(offeringsData);
         setAttendanceRecords(attendanceData);
+
+        if (user.role === 'superuser' && snapshots[3]) {
+            const churchesData = (snapshots[3] as any).docs.map(toChurchObject);
+            setChurches(churchesData);
+        }
         
         // Role-specific data processing
         if (user?.role === 'member' && user.email) {
@@ -127,7 +128,7 @@ export function DashboardClient({ initialChurches }: DashboardClientProps) {
     };
     
     fetchData();
-  }, [user, initialChurches]);
+  }, [user]);
 
   const processChartData = () => {
     const now = new Date();
