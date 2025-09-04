@@ -21,6 +21,13 @@ const schema = z.object({
 export async function createCheckoutSession(
   data: { plan: Plan }
 ): Promise<{ sessionId: string }> {
+  // Check if Stripe is configured
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey || secretKey.startsWith('sk_test_dummy')) {
+    throw new Error('Stripe is not configured. Please add your Stripe secret key to the environment variables.');
+  }
+
+
   const validation = schema.safeParse(data);
   if (!validation.success) {
     throw new Error('Invalid plan data');
