@@ -59,11 +59,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { AttendanceRecord } from "@/lib/types";
 import { format, isValid } from "date-fns";
-import { addAttendanceRecord, updateAttendanceRecord, deleteAttendanceRecord } from "@/actions/attendance-actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUser } from "@/hooks/use-user";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { collection, getDocs, orderBy, query, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 
 const emptyRecord: Omit<AttendanceRecord, 'id' | 'createdAt' | 'total'> = {
   date: new Date().toISOString().split("T")[0],
@@ -129,8 +128,8 @@ export default function AttendancePage() {
 
   const handleDelete = async (recordId: string) => {
     try {
-      await deleteAttendanceRecord(recordId);
-      setRecords(records.filter((r) => r.id !== recordId));
+      await deleteDoc(doc(db, "attendance", recordId));
+      await fetchRecords();
       toast({ title: "Record Deleted", description: "The attendance record has been removed." });
     } catch (error) {
       console.error("Failed to delete record:", error);
@@ -149,10 +148,18 @@ export default function AttendancePage() {
 
     try {
       if ('id' in recordToSave && recordToSave.id) {
-        await updateAttendanceRecord(recordToSave as Omit<AttendanceRecord, 'createdAt'>);
+        const recordRef = doc(db, "attendance", recordToSave.id);
+        const { id, ...dataToUpdate } = recordToSave;
+        await updateDoc(recordRef, {
+            ...dataToUpdate,
+            updatedAt: serverTimestamp()
+        });
         toast({ title: "Record Updated", description: `The attendance record has been updated.` });
       } else {
-        await addAttendanceRecord(recordToSave as Omit<AttendanceRecord, 'id' | 'createdAt'>);
+        await addDoc(collection(db, "attendance"), {
+            ...recordToSave,
+            createdAt: serverTimestamp()
+        });
         toast({ title: "Record Added", description: `A new attendance record has been added.` });
       }
       fetchRecords(); // Refetch data
