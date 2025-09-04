@@ -35,9 +35,9 @@ import { useToast } from "@/hooks/use-toast";
 import type { Church } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUser } from "@/hooks/use-user";
-import { db } from "@/lib/firebase";
-import { collection, getDocs, orderBy, query, addDoc, updateDoc, doc, serverTimestamp, deleteDoc } from "firebase/firestore";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { getChurches, addChurch, updateChurch, deleteChurch, updateChurchStatus } from "@/actions/church-actions";
+
 
 const emptyChurch: Omit<Church, 'id' | 'createdAt'> = {
   name: "",
@@ -48,14 +48,6 @@ const emptyChurch: Omit<Church, 'id' | 'createdAt'> = {
   email: "",
   phone: "",
   website: ""
-};
-
-const toChurchObject = (doc: any): Church => {
-    const data = doc.data();
-    return {
-        id: doc.id,
-        ...data
-    } as Church;
 };
 
 export default function ChurchesPage() {
@@ -69,10 +61,7 @@ export default function ChurchesPage() {
   const fetchChurches = async () => {
     setIsLoading(true);
     try {
-      const churchesCollection = collection(db, 'churches');
-      const q = query(churchesCollection, orderBy("createdAt", "desc"));
-      const snapshot = await getDocs(q);
-      const fetchedChurches = snapshot.docs.map(toChurchObject);
+      const fetchedChurches = await getChurches();
       setChurches(fetchedChurches);
     } catch (error) {
       console.error("Failed to fetch churches:", error);
@@ -107,19 +96,11 @@ export default function ChurchesPage() {
     try {
       if ('id' in selectedChurch && selectedChurch.id) {
         // Editing existing church
-        const churchRef = doc(db, "churches", selectedChurch.id);
-        const { id, ...dataToUpdate } = selectedChurch;
-        await updateDoc(churchRef, {
-            ...dataToUpdate,
-            updatedAt: serverTimestamp()
-        });
+        await updateChurch(selectedChurch as Omit<Church, 'createdAt'>);
         toast({ title: "Church Updated", description: `${selectedChurch.name} has been updated.` });
       } else {
         // Adding new church
-         await addDoc(collection(db, "churches"), {
-            ...(selectedChurch as Omit<Church, 'id' | 'createdAt'>),
-            createdAt: serverTimestamp()
-        });
+         await addChurch(selectedChurch as Omit<Church, 'id' | 'createdAt'>);
         toast({ title: "Church Added", description: `${selectedChurch.name} has been added.` });
       }
       fetchChurches();
@@ -147,11 +128,7 @@ export default function ChurchesPage() {
   const handleStatusChange = async (church: Church) => {
     const newStatus = church.status === "Active" ? "Inactive" : "Active";
     try {
-      const churchRef = doc(db, "churches", church.id);
-      await updateDoc(churchRef, {
-        status: newStatus,
-        updatedAt: serverTimestamp()
-      });
+      await updateChurchStatus(church.id, newStatus);
       toast({ title: "Status Updated", description: `${church.name} is now ${newStatus}.` });
       fetchChurches();
     } catch (error) {
@@ -160,9 +137,9 @@ export default function ChurchesPage() {
     }
   };
 
-  const handleDelete = async (churchId: string) => {
+  const handleDeleteConfirm = async (churchId: string) => {
     try {
-      await deleteDoc(doc(db, "churches", churchId));
+      await deleteChurch(churchId);
       toast({ title: "Church Deleted", description: "The church has been successfully deleted." });
       fetchChurches();
     } catch (error) {
@@ -245,7 +222,7 @@ export default function ChurchesPage() {
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDelete(church.id)}>Continue</AlertDialogAction>
+                                  <AlertDialogAction onClick={() => handleDeleteConfirm(church.id)}>Continue</AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
@@ -307,5 +284,3 @@ export default function ChurchesPage() {
     </div>
   );
 }
-
-    
