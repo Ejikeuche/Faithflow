@@ -49,11 +49,21 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  getInformation,
   deleteInformation,
   archiveInformation,
 } from "@/actions/information-actions";
 import { InformationFormDialog } from "@/components/information-form-dialog";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, orderBy, query } from "firebase/firestore";
+
+const toInformationObject = (doc: any): Information => {
+    const data = doc.data();
+    return {
+        id: doc.id,
+        ...data
+    } as Information;
+};
+
 
 export default function InformationPage() {
   const { user } = useUser();
@@ -66,7 +76,10 @@ export default function InformationPage() {
   const fetchInformation = async () => {
     setIsLoading(true);
     try {
-      const fetchedInformation = await getInformation();
+      const infoCollection = collection(db, 'information');
+      const q = query(infoCollection, orderBy("date", "desc"));
+      const snapshot = await getDocs(q);
+      const fetchedInformation = snapshot.docs.map(toInformationObject);
       setInformation(fetchedInformation);
     } catch (error) {
       console.error("Failed to fetch information:", error);
@@ -77,8 +90,10 @@ export default function InformationPage() {
   };
 
   useEffect(() => {
-    fetchInformation();
-  }, [toast]);
+    if(user) {
+        fetchInformation();
+    }
+  }, [user, toast]);
 
 
   const handleCreateClick = () => {
@@ -134,6 +149,7 @@ export default function InformationPage() {
   };
 
   const parseDate = (dateString: string) => {
+    if(!dateString) return new Date();
     const date = new Date(dateString);
     if (dateString && !dateString.includes('T')) {
       date.setUTCHours(0, 0, 0, 0);

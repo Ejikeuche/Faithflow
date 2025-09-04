@@ -59,8 +59,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { AttendanceRecord } from "@/lib/types";
 import { format, isValid } from "date-fns";
-import { getAttendanceRecords, addAttendanceRecord, updateAttendanceRecord, deleteAttendanceRecord } from "@/actions/attendance-actions";
+import { addAttendanceRecord, updateAttendanceRecord, deleteAttendanceRecord } from "@/actions/attendance-actions";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useUser } from "@/hooks/use-user";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, orderBy, query } from "firebase/firestore";
 
 const emptyRecord: Omit<AttendanceRecord, 'id' | 'createdAt' | 'total'> = {
   date: new Date().toISOString().split("T")[0],
@@ -71,28 +74,43 @@ const emptyRecord: Omit<AttendanceRecord, 'id' | 'createdAt' | 'total'> = {
   children: 0,
 };
 
+const toAttendanceRecordObject = (doc: any): AttendanceRecord => {
+    const data = doc.data();
+    return {
+        id: doc.id,
+        ...data
+    } as AttendanceRecord;
+};
+
 export default function AttendancePage() {
   const { toast } = useToast();
+  const { user } = useUser();
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<Omit<AttendanceRecord, 'createdAt' | 'total'> | Omit<AttendanceRecord, 'id' | 'createdAt' | 'total'> | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  const fetchRecords = async () => {
+    setIsLoading(true);
+    try {
+      const attendanceCollection = collection(db, 'attendance');
+      const q = query(attendanceCollection, orderBy("date", "desc"));
+      const snapshot = await getDocs(q);
+      const fetchedRecords = snapshot.docs.map(toAttendanceRecordObject);
+      setRecords(fetchedRecords);
+    } catch (error) {
+      console.error("Failed to fetch attendance records:", error);
+      toast({ title: "Error", description: "Could not fetch attendance records.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchRecords = async () => {
-      setIsLoading(true);
-      try {
-        const fetchedRecords = await getAttendanceRecords();
-        setRecords(fetchedRecords);
-      } catch (error) {
-        console.error("Failed to fetch attendance records:", error);
-        toast({ title: "Error", description: "Could not fetch attendance records.", variant: "destructive" });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchRecords();
-  }, [toast]);
+    if (user) {
+        fetchRecords();
+    }
+  }, [user, toast]);
 
   const calculateTotal = (record: Omit<AttendanceRecord, 'id' | 'createdAt' | 'total'>) => {
     return (Number(record.men) || 0) + (Number(record.women) || 0) + (Number(record.youth) || 0) + (Number(record.children) || 0);
@@ -131,14 +149,13 @@ export default function AttendancePage() {
 
     try {
       if ('id' in recordToSave && recordToSave.id) {
-        const updatedRecord = await updateAttendanceRecord(recordToSave as Omit<AttendanceRecord, 'createdAt'>);
-        setRecords(records.map((r) => (r.id === updatedRecord.id ? updatedRecord : r)));
+        await updateAttendanceRecord(recordToSave as Omit<AttendanceRecord, 'createdAt'>);
         toast({ title: "Record Updated", description: `The attendance record has been updated.` });
       } else {
-        const newRecord = await addAttendanceRecord(recordToSave as Omit<AttendanceRecord, 'id' | 'createdAt'>);
-        setRecords([newRecord, ...records]);
+        await addAttendanceRecord(recordToSave as Omit<AttendanceRecord, 'id' | 'createdAt'>);
         toast({ title: "Record Added", description: `A new attendance record has been added.` });
       }
+      fetchRecords(); // Refetch data
       setIsDialogOpen(false);
       setSelectedRecord(null);
     } catch (error) {
@@ -154,6 +171,7 @@ export default function AttendancePage() {
   };
   
   const parseDate = (dateString: string) => {
+    if (!dateString) return new Date();
     const date = new Date(dateString);
      if (dateString && !dateString.includes('T')) {
       date.setUTCHours(0,0,0,0);
@@ -299,19 +317,19 @@ export default function AttendancePage() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="men" className="text-right">Men</Label>
-              <Input id="men" type="number" min="0" value={selectedRecord?.men || 0} onChange={(e) => handleFieldChange("men", e.target.value)} className="col-span-3" />
+              <Input id="men" type="number" min="0" value={selectedRecord?.men || 0} onChange={(e) => handleFieldChange("men", Number(e.target.value))} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="women" className="text-right">Women</Label>
-              <Input id="women" type="number" min="0" value={selectedRecord?.women || 0} onChange={(e) => handleFieldChange("women", e.target.value)} className="col-span-3" />
+              <Input id="women" type="number" min="0" value={selectedRecord?.women || 0} onChange={(e) => handleFieldChange("women", Number(e.target.value))} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="youth" className="text-right">Youth</Label>
-              <Input id="youth" type="number" min="0" value={selectedRecord?.youth || 0} onChange={(e) => handleFieldChange("youth", e.target.value)} className="col-span-3" />
+              <Input id="youth" type="number" min="0" value={selectedRecord?.youth || 0} onChange={(e) => handleFieldChange("youth", Number(e.target.value))} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="children" className="text-right">Children</Label>
-              <Input id="children" type="number" min="0" value={selectedRecord?.children || 0} onChange={(e) => handleFieldChange("children", e.target.value)} className="col-span-3" />
+              <Input id="children" type="number" min="0" value={selectedRecord?.children || 0} onChange={(e) => handleFieldChange("children", Number(e.target.value))} className="col-span-3" />
             </div>
              <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="total" className="text-right font-bold">Total</Label>

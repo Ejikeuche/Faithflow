@@ -33,8 +33,11 @@ import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import type { Church } from "@/lib/types";
-import { getChurches, addChurch, updateChurch } from "@/actions/church-actions";
+import { addChurch, updateChurch } from "@/actions/church-actions";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useUser } from "@/hooks/use-user";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, orderBy, query } from "firebase/firestore";
 
 const emptyChurch: Omit<Church, 'id' | 'createdAt'> = {
   name: "",
@@ -47,28 +50,43 @@ const emptyChurch: Omit<Church, 'id' | 'createdAt'> = {
   website: ""
 };
 
+const toChurchObject = (doc: any): Church => {
+    const data = doc.data();
+    return {
+        id: doc.id,
+        ...data
+    } as Church;
+};
+
 export default function ChurchesPage() {
   const { toast } = useToast();
+  const { user } = useUser();
   const [churches, setChurches] = useState<Church[]>([]);
   const [selectedChurch, setSelectedChurch] = useState<Omit<Church, 'createdAt'> | Omit<Church, 'id' | 'createdAt'> | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  const fetchChurches = async () => {
+    setIsLoading(true);
+    try {
+      const churchesCollection = collection(db, 'churches');
+      const q = query(churchesCollection, orderBy("createdAt", "desc"));
+      const snapshot = await getDocs(q);
+      const fetchedChurches = snapshot.docs.map(toChurchObject);
+      setChurches(fetchedChurches);
+    } catch (error) {
+      console.error("Failed to fetch churches:", error);
+      toast({ title: "Error", description: "Could not fetch churches.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchChurches = async () => {
-      setIsLoading(true);
-      try {
-        const fetchedChurches = await getChurches();
-        setChurches(fetchedChurches);
-      } catch (error) {
-        console.error("Failed to fetch churches:", error);
-        toast({ title: "Error", description: "Could not fetch churches.", variant: "destructive" });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchChurches();
-  }, [toast]);
+    if(user) {
+        fetchChurches();
+    }
+  }, [user, toast]);
 
   const handleAddClick = () => {
     setSelectedChurch(emptyChurch);
@@ -89,15 +107,14 @@ export default function ChurchesPage() {
     try {
       if ('id' in selectedChurch && selectedChurch.id) {
         // Editing existing church
-        const updatedChurch = await updateChurch(selectedChurch as Omit<Church, 'createdAt'>);
-        setChurches(churches.map(c => c.id === updatedChurch.id ? updatedChurch : c));
-        toast({ title: "Church Updated", description: `${updatedChurch.name} has been updated.` });
+        await updateChurch(selectedChurch as Omit<Church, 'createdAt'>);
+        toast({ title: "Church Updated", description: `${selectedChurch.name} has been updated.` });
       } else {
         // Adding new church
-        const newChurch = await addChurch(selectedChurch as Omit<Church, 'id' | 'createdAt'>);
-        setChurches([newChurch, ...churches]);
-        toast({ title: "Church Added", description: `${newChurch.name} has been added.` });
+        await addChurch(selectedChurch as Omit<Church, 'id' | 'createdAt'>);
+        toast({ title: "Church Added", description: `${selectedChurch.name} has been added.` });
       }
+      fetchChurches();
       setIsDialogOpen(false);
       setSelectedChurch(null);
     } catch (error) {

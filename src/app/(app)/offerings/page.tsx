@@ -13,18 +13,32 @@ import {
 } from "@/components/ui/card";
 import type { Offering } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { getOfferings } from "@/actions/offering-actions";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useUser } from "@/hooks/use-user";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, orderBy, query } from "firebase/firestore";
+
+const toOfferingObject = (doc: any): Offering => {
+    const data = doc.data();
+    return {
+        id: doc.id,
+        ...data
+    } as Offering;
+};
 
 export default function OfferingsPage() {
   const { toast } = useToast();
+  const { user } = useUser();
   const [offerings, setOfferings] = useState<Offering[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchOfferings = async () => {
     setIsLoading(true);
     try {
-      const fetchedOfferings = await getOfferings();
+      const offeringsCollection = collection(db, 'offerings');
+      const q = query(offeringsCollection, orderBy("date", "desc"));
+      const snapshot = await getDocs(q);
+      const fetchedOfferings = snapshot.docs.map(toOfferingObject);
       setOfferings(fetchedOfferings);
     } catch (error) {
       console.error("Failed to fetch offerings:", error);
@@ -35,8 +49,10 @@ export default function OfferingsPage() {
   };
 
   useEffect(() => {
-    fetchOfferings();
-  }, []);
+    if(user) {
+        fetchOfferings();
+    }
+  }, [user]);
 
   const handleUploadSuccess = (addedCount: number) => {
     toast({

@@ -47,8 +47,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { format, isValid } from "date-fns";
 import type { Member } from "@/lib/types";
-import { getMembers, addMember, updateMember, deleteMember } from "@/actions/member-actions";
+import { addMember, updateMember, deleteMember } from "@/actions/member-actions";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useUser } from "@/hooks/use-user";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, orderBy, query } from "firebase/firestore";
 
 const emptyMember: Omit<Member, 'id' | 'createdAt'> = {
     name: "",
@@ -59,28 +62,43 @@ const emptyMember: Omit<Member, 'id' | 'createdAt'> = {
     address: ""
 };
 
+const toMemberObject = (doc: any): Member => {
+    const data = doc.data();
+    return {
+        id: doc.id,
+        ...data
+    } as Member;
+};
+
 export default function MembersPage() {
     const { toast } = useToast();
+    const { user } = useUser();
     const [members, setMembers] = useState<Member[]>([]);
     const [selectedMember, setSelectedMember] = useState<Omit<Member, 'createdAt'> | Omit<Member, 'id' | 'createdAt'> | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
+    const fetchMembers = async () => {
+      setIsLoading(true);
+      try {
+        const membersCollection = collection(db, 'members');
+        const q = query(membersCollection, orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+        const fetchedMembers = snapshot.docs.map(toMemberObject);
+        setMembers(fetchedMembers);
+      } catch (error) {
+        console.error("Failed to fetch members:", error);
+        toast({ title: "Error", description: "Could not fetch members.", variant: "destructive" });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     useEffect(() => {
-      const fetchMembers = async () => {
-        setIsLoading(true);
-        try {
-          const fetchedMembers = await getMembers();
-          setMembers(fetchedMembers);
-        } catch (error) {
-          console.error("Failed to fetch members:", error);
-          toast({ title: "Error", description: "Could not fetch members.", variant: "destructive" });
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      fetchMembers();
-    }, [toast]);
+      if (user) {
+        fetchMembers();
+      }
+    }, [user, toast]);
 
 
     const handleAddClick = () => {
@@ -114,12 +132,12 @@ export default function MembersPage() {
             if ('id' in selectedMember && selectedMember.id) {
                 // Editing existing member
                 const updated = await updateMember(selectedMember as Omit<Member, 'createdAt'>);
-                setMembers(members.map(m => m.id === updated.id ? updated : m));
+                await fetchMembers(); // Refetch
                 toast({ title: "Member Updated", description: `${updated.name}'s details have been updated.` });
             } else {
                 // Adding new member
                 const newMember = await addMember(selectedMember as Omit<Member, 'id' | 'createdAt'>);
-                setMembers([newMember, ...members]);
+                await fetchMembers(); // Refetch
                 toast({ title: "Member Added", description: `${newMember.name} has been added.` });
             }
             setIsDialogOpen(false);
@@ -149,8 +167,13 @@ export default function MembersPage() {
     }
     
     const parseDate = (dateString: string) => {
-        const [year, month, day] = dateString.split('-').map(Number);
-        return new Date(year, month - 1, day);
+        if (!dateString) return new Date();
+        const parts = dateString.split('-');
+        if (parts.length === 3) {
+            const [year, month, day] = parts.map(Number);
+            return new Date(year, month - 1, day);
+        }
+        return new Date(dateString);
     }
     
     const handleViewProfile = (member: Member) => {

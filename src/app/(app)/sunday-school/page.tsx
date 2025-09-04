@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -32,16 +33,21 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { getLessons, deleteLesson } from "@/actions/sunday-school-actions";
+import { deleteLesson } from "@/actions/sunday-school-actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LessonFormDialog } from "@/components/lesson-form-dialog";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, orderBy, query } from "firebase/firestore";
 
-const emptyLesson: Omit<SundaySchoolLesson, "id" | "createdAt"> = {
-  title: "",
-  description: "",
-  content: "",
-  date: new Date().toISOString().split('T')[0],
+
+const toLessonObject = (doc: any): SundaySchoolLesson => {
+    const data = doc.data();
+    return {
+        id: doc.id,
+        ...data
+    } as SundaySchoolLesson;
 };
+
 
 export default function SundaySchoolPage() {
   const { user } = useUser();
@@ -54,7 +60,10 @@ export default function SundaySchoolPage() {
   const fetchLessons = async () => {
     setIsLoading(true);
     try {
-      const fetchedLessons = await getLessons();
+      const lessonsCollection = collection(db, 'sundaySchoolLessons');
+      const q = query(lessonsCollection, orderBy("date", "desc"));
+      const snapshot = await getDocs(q);
+      const fetchedLessons = snapshot.docs.map(toLessonObject);
       setLessons(fetchedLessons);
     } catch (error) {
       console.error("Failed to fetch lessons:", error);
@@ -65,8 +74,10 @@ export default function SundaySchoolPage() {
   };
 
   useEffect(() => {
-    fetchLessons();
-  }, [toast]);
+    if(user) {
+        fetchLessons();
+    }
+  }, [user, toast]);
 
   const handleCreateClick = () => {
     setEditingLesson(null);
@@ -95,6 +106,7 @@ export default function SundaySchoolPage() {
   }
 
   const parseDate = (dateString: string) => {
+    if(!dateString) return new Date();
     const date = new Date(dateString);
     if (dateString && !dateString.includes('T')) {
       date.setUTCHours(0, 0, 0, 0);

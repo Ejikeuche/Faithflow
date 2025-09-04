@@ -13,13 +13,16 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { useUser } from "@/hooks/use-user";
-import { getMembers } from "@/actions/member-actions";
-import { getOfferings } from "@/actions/offering-actions";
-import { getAttendanceRecords } from "@/actions/attendance-actions";
-import { getChurches } from "@/actions/church-actions";
 import type { Member, Offering, AttendanceRecord, Church as ChurchType } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { subMonths, format, startOfMonth } from 'date-fns';
+import { db } from "@/lib/firebase";
+import { collection, getDocs, orderBy, query } from "firebase/firestore";
+
+const toMemberObject = (doc: any): Member => ({ id: doc.id, ...doc.data() } as Member);
+const toOfferingObject = (doc: any): Offering => ({ id: doc.id, ...doc.data() } as Offering);
+const toAttendanceRecordObject = (doc: any): AttendanceRecord => ({ id: doc.id, ...doc.data() } as AttendanceRecord);
+const toChurchObject = (doc: any): ChurchType => ({ id: doc.id, ...doc.data() } as ChurchType);
 
 const offeringChartConfig = {
   total: {
@@ -54,16 +57,22 @@ export default function DashboardPage() {
       setIsLoading(true);
       try {
         const [
-          membersData,
-          offeringsData,
-          attendanceData,
-          churchesData,
+          membersSnapshot,
+          offeringsSnapshot,
+          attendanceSnapshot,
+          churchesSnapshot,
         ] = await Promise.all([
-          getMembers(),
-          getOfferings(),
-          getAttendanceRecords(),
-          getChurches(),
+          getDocs(query(collection(db, 'members'), orderBy("createdAt", "desc"))),
+          getDocs(query(collection(db, 'offerings'), orderBy("date", "desc"))),
+          getDocs(query(collection(db, 'attendance'), orderBy("date", "desc"))),
+          getDocs(query(collection(db, 'churches'), orderBy("createdAt", "desc"))),
         ]);
+        
+        const membersData = membersSnapshot.docs.map(toMemberObject);
+        const offeringsData = offeringsSnapshot.docs.map(toOfferingObject);
+        const attendanceData = attendanceSnapshot.docs.map(toAttendanceRecordObject);
+        const churchesData = churchesSnapshot.docs.map(toChurchObject);
+
         setMembers(membersData);
         setOfferings(offeringsData);
         setAttendanceRecords(attendanceData);
@@ -105,6 +114,7 @@ export default function DashboardPage() {
     }
 
     offerings.forEach(o => {
+        if(!o.date) return;
         const recordDate = new Date(o.date);
         const monthKey = format(recordDate, 'yyyy-MM');
         if (monthlyData[monthKey]) {
@@ -113,6 +123,7 @@ export default function DashboardPage() {
     });
 
     attendanceRecords.forEach(r => {
+        if(!r.date) return;
         const recordDate = new Date(r.date);
         const monthKey = format(recordDate, 'yyyy-MM');
         if (monthlyData[monthKey]) {
