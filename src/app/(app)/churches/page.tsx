@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -36,8 +35,17 @@ import type { Church } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUser } from "@/hooks/use-user";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { getChurches, addChurch, updateChurch, deleteChurch, updateChurchStatus } from "@/actions/church-actions";
+import { addChurch, updateChurch, deleteChurch, updateChurchStatus } from "@/actions/church-actions";
+import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
+const toChurchObject = (doc: any): Church => {
+    const data = doc.data();
+    return {
+        id: doc.id,
+        ...data
+    } as Church;
+};
 
 const emptyChurch: Omit<Church, 'id' | 'createdAt'> = {
   name: "",
@@ -61,7 +69,10 @@ export default function ChurchesPage() {
   const fetchChurches = async () => {
     setIsLoading(true);
     try {
-      const fetchedChurches = await getChurches();
+      const churchesCollection = collection(db, 'churches');
+      const q = query(churchesCollection, orderBy("name"));
+      const snapshot = await getDocs(q);
+      const fetchedChurches = snapshot.docs.map(toChurchObject);
       setChurches(fetchedChurches);
     } catch (error) {
       console.error("Failed to fetch churches:", error);

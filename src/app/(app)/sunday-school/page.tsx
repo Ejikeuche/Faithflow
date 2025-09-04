@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -218,7 +217,7 @@ export default function SundaySchoolPage() {
                                   <div className="text-left">
                                       <h3 className="font-semibold">{lesson.title}</h3>
                                       <p className="text-sm text-muted-foreground">{lesson.description}</p>
-                                      <p className="pt-2 text-xs text-muted-foreground">{isValid(date) ? format(date, "MMMM d, yyy4") : 'No date'}</p>
+                                      <p className="pt-2 text-xs text-muted-foreground">{isValid(date) ? format(date, "MMMM d, yyyy") : 'No date'}</p>
                                   </div>
                               </AccordionTrigger>
                               <AccordionContent className="prose prose-sm max-w-none text-muted-foreground">

@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react";
@@ -45,16 +44,12 @@ const churchMembershipChartConfig = {
     },
 } satisfies ChartConfig;
 
-interface DashboardClientProps {
-  initialChurches: ChurchType[];
-}
-
-export function DashboardClient({ initialChurches }: DashboardClientProps) {
+export function DashboardClient() {
   const { user } = useUser();
   const [members, setMembers] = useState<Member[]>([]);
   const [offerings, setOfferings] = useState<Offering[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
-  const [churches, setChurches] = useState<ChurchType[]>(initialChurches);
+  const [churches, setChurches] = useState<ChurchType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [memberTotalOffering, setMemberTotalOffering] = useState<number>(0);
   const [upcomingBirthdays, setUpcomingBirthdays] = useState<Member[]>([]);
@@ -77,7 +72,7 @@ export function DashboardClient({ initialChurches }: DashboardClientProps) {
 
         // Superuser also needs to fetch churches
         if (user.role === 'superuser') {
-            promises.push(getDocs(query(collection(db, 'churches'), orderBy("createdAt", "desc"))));
+            promises.push(getDocs(query(collection(db, 'churches'), orderBy("name"))));
         }
 
         const snapshots = await Promise.all(promises);
@@ -369,7 +364,7 @@ export function DashboardClient({ initialChurches }: DashboardClientProps) {
                       radius={4}
                     />
                   </BarChart>
-                </ChartContainer>
+                </Container>
             </CardContent>
           </Card>
         </div>

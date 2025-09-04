@@ -1,48 +1,8 @@
-
 'use server';
 
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { Church } from '@/lib/types';
-
-// Helper function to convert Firestore doc to Church object
-const toChurchObject = (doc: FirebaseFirestore.DocumentSnapshot): Church => {
-    const data = doc.data();
-    if (!data) {
-        throw new Error(`Church document ${doc.id} has no data.`);
-    }
-    // Handle Firestore Timestamp
-    const createdAt = data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString();
-
-    return {
-        id: doc.id,
-        name: data.name,
-        location: data.location,
-        members: data.members,
-        status: data.status,
-        pastor: data.pastor,
-        email: data.email,
-        phone: data.phone,
-        website: data.website,
-        createdAt: createdAt,
-    };
-};
-
-// READ
-export async function getChurches(): Promise<Church[]> {
-  try {
-    const churchesCollection = adminDb.collection('churches');
-    const snapshot = await churchesCollection.orderBy('name').get();
-    if (snapshot.empty) {
-        return [];
-    }
-    const churches = snapshot.docs.map(toChurchObject);
-    return churches;
-  } catch (error) {
-    console.error("Error in getChurches:", error);
-    throw new Error("Failed to fetch churches due to a server error.");
-  }
-}
 
 // CREATE
 export async function addChurch(churchData: Omit<Church, 'id' | 'createdAt'>): Promise<Church> {
@@ -70,7 +30,12 @@ export async function updateChurch(churchData: Omit<Church, 'createdAt'>): Promi
   });
   
   const docSnap = await churchRef.get();
-  return toChurchObject(docSnap);
+  const data = docSnap.data();
+   if (!data) {
+        throw new Error(`Church document ${docSnap.id} has no data.`);
+    }
+  // This is not a full object but it is what is needed by the caller
+  return { id: docSnap.id, ...dataToUpdate } as Church;
 }
 
 // DELETE
