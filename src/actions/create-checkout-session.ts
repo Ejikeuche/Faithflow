@@ -23,7 +23,7 @@ export async function createCheckoutSession(
 ): Promise<{ sessionId: string }> {
   // Check if Stripe is configured
   const secretKey = process.env.STRIPE_SECRET_KEY;
-  if (!secretKey || secretKey.startsWith('sk_test_')) {
+  if (!secretKey) {
     throw new Error('Stripe is not configured. Please add your Stripe secret key to the environment variables.');
   }
 
