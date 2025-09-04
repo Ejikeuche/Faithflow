@@ -80,19 +80,21 @@ export default function DashboardPage() {
         setAttendanceRecords(attendanceData);
         setChurches(churchesData);
 
-        if (user?.role === 'member') {
-            if(user.email) {
-                const memberOfferings = offeringsData.filter(o => o.email === user.email);
-                const total = memberOfferings.reduce((acc, o) => acc + o.amount, 0);
-                setMemberTotalOffering(total);
-            }
-
+        if (user?.role === 'member' && user.email) {
+            const memberOfferings = offeringsData.filter(o => o.email === user.email);
+            const total = memberOfferings.reduce((acc, o) => acc + o.amount, 0);
+            setMemberTotalOffering(total);
+            
             const currentMonth = getMonth(new Date());
             const birthdays = membersData
               .filter(member => {
                 if (!member.dob) return false;
-                const birthDate = parseISO(member.dob);
-                return getMonth(birthDate) === currentMonth;
+                try {
+                  const birthDate = parseISO(member.dob);
+                  return getMonth(birthDate) === currentMonth;
+                } catch (e) {
+                  return false;
+                }
               })
               .sort((a, b) => {
                  const dateA = parseISO(a.dob!);
@@ -134,21 +136,25 @@ export default function DashboardPage() {
 
     offerings.forEach(o => {
         if(!o.date) return;
-        const recordDate = new Date(o.date);
-        const monthKey = format(recordDate, 'yyyy-MM');
-        if (monthlyData[monthKey]) {
-            monthlyData[monthKey].offering += o.amount;
-        }
+        try {
+            const recordDate = new Date(o.date);
+            const monthKey = format(recordDate, 'yyyy-MM');
+            if (monthlyData[monthKey]) {
+                monthlyData[monthKey].offering += o.amount;
+            }
+        } catch(e) {}
     });
 
     attendanceRecords.forEach(r => {
         if(!r.date) return;
-        const recordDate = new Date(r.date);
-        const monthKey = format(recordDate, 'yyyy-MM');
-        if (monthlyData[monthKey]) {
-            monthlyData[monthKey].attendance += r.total;
-            monthlyData[monthKey].attendanceCount += 1;
-        }
+        try {
+            const recordDate = new Date(r.date);
+            const monthKey = format(recordDate, 'yyyy-MM');
+            if (monthlyData[monthKey]) {
+                monthlyData[monthKey].attendance += r.total;
+                monthlyData[monthKey].attendanceCount += 1;
+            }
+        } catch(e) {}
     });
 
     return Object.entries(monthlyData).map(([key, value]) => ({
@@ -243,19 +249,23 @@ export default function DashboardPage() {
                     <ul className="space-y-3">
                         {upcomingBirthdays.map(member => {
                             if (!member.dob) return null;
-                            const birthDate = parseISO(member.dob);
-                            return (
-                            <li key={member.id} className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                <Avatar className="h-9 w-9">
-                                    <AvatarImage src={`https://avatar.vercel.sh/${member.email}.png`} alt={member.name} />
-                                    <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <span className="font-medium">{member.name}</span>
-                                </div>
-                                <span className="text-sm text-muted-foreground">{format(birthDate, 'MMMM d')}</span>
-                            </li>
-                            )
+                            try {
+                                const birthDate = parseISO(member.dob);
+                                return (
+                                <li key={member.id} className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                    <Avatar className="h-9 w-9">
+                                        <AvatarImage src={`https://avatar.vercel.sh/${member.email}.png`} alt={member.name} />
+                                        <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <span className="font-medium">{member.name}</span>
+                                    </div>
+                                    <span className="text-sm text-muted-foreground">{format(birthDate, 'MMMM d')}</span>
+                                </li>
+                                )
+                            } catch (e) {
+                                return null;
+                            }
                         })}
                     </ul>
                     ) : (
@@ -380,7 +390,7 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle>Welcome to FaithFlow</CardTitle>
             <CardDescription>Your all-in-one solution for church management.</CardDescription>
-          </CardHeader>
+          </Header>
           <CardContent>
              <div className="relative aspect-video w-full">
                 <Image src="https://picsum.photos/1200/600" alt="Church community" fill className="rounded-md object-cover" data-ai-hint="church community" />
