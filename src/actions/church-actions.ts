@@ -28,6 +28,22 @@ const toChurchObject = (doc: FirebaseFirestore.DocumentSnapshot): Church => {
     };
 };
 
+// READ
+export async function getChurches(): Promise<Church[]> {
+  try {
+    const churchesCollection = adminDb.collection('churches');
+    const snapshot = await churchesCollection.orderBy('name').get();
+    if (snapshot.empty) {
+        return [];
+    }
+    const churches = snapshot.docs.map(toChurchObject);
+    return churches;
+  } catch (error) {
+    console.error("Error in getChurches:", error);
+    throw new Error("Failed to fetch churches due to a server error.");
+  }
+}
+
 // CREATE
 export async function addChurch(churchData: Omit<Church, 'id' | 'createdAt'>): Promise<Church> {
     const churchesCollection = adminDb.collection('churches');
