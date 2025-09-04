@@ -26,11 +26,14 @@ const initialPlans: Omit<Plan, 'id'>[] = [
 // Helper function to convert Firestore doc to Plan object
 const toPlanObject = (doc: FirebaseFirestore.DocumentSnapshot): Plan => {
     const data = doc.data();
+    if (!data) {
+        throw new Error(`Plan document ${doc.id} has no data.`);
+    }
     return {
         id: doc.id,
-        name: data?.name,
-        memberLimit: data?.memberLimit,
-        price: data?.price,
+        name: data.name,
+        memberLimit: data.memberLimit,
+        price: data.price,
     };
 };
 
@@ -57,16 +60,22 @@ async function initializePlans(): Promise<Plan[]> {
 
 // READ
 export async function getPlans(): Promise<Plan[]> {
-  const plansCollection = adminDb.collection('plans');
-  const snapshot = await plansCollection.get();
-  if (snapshot.empty) {
-      // If no plans exist, initialize them
-      return await initializePlans();
-  }
+  try {
+    const plansCollection = adminDb.collection('plans');
+    const snapshot = await plansCollection.get();
+    if (snapshot.empty) {
+        // If no plans exist, initialize them
+        return await initializePlans();
+    }
 
-  const plans = snapshot.docs.map(toPlanObject);
-  // Sort by member limit to ensure consistent order
-  return plans.sort((a,b) => a.memberLimit.min - b.memberLimit.min);
+    const plans = snapshot.docs.map(toPlanObject);
+    // Sort by member limit to ensure consistent order
+    return plans.sort((a,b) => a.memberLimit.min - b.memberLimit.min);
+  } catch (error) {
+    console.error("Error in getPlans:", error);
+    // Re-throw the error to be caught by the calling component
+    throw new Error("Failed to fetch plans due to a server error.");
+  }
 }
 
 // UPDATE

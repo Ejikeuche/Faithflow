@@ -50,7 +50,8 @@ export default function PlansPage() {
         setPlans(fetchedPlans);
       } catch (error) {
         console.error("Failed to fetch plans:", error);
-        toast({ title: "Error", description: "Could not fetch plans.", variant: "destructive" });
+        const errorMessage = error instanceof Error ? error.message : "Could not fetch plans.";
+        toast({ title: "Error", description: errorMessage, variant: "destructive" });
       } finally {
         setIsLoading(false);
       }
@@ -88,21 +89,21 @@ export default function PlansPage() {
   };
 
   const handleSave = async () => {
-    if (selectedPlan) {
-      try {
-        const updated = await updatePlan(selectedPlan);
-        setPlans(
-          plans.map((p) => (p.id === updated.id ? updated : p))
-        );
-        toast({ title: "Plan Saved", description: `${updated.name} has been updated.`});
-      } catch (error) {
-        toast({ title: "Error", description: "Could not save the plan.", variant: "destructive" });
-        console.error("Failed to save plan:", error);
-      }
+    if (!selectedPlan) return;
+    try {
+      const updated = await updatePlan(selectedPlan);
+      setPlans(
+        plans.map((p) => (p.id === updated.id ? updated : p))
+      );
+      toast({ title: "Plan Saved", description: `${updated.name} has been updated.`});
+      setIsEditing(false);
+      setSelectedPlan(null);
+    } catch (error) {
+      toast({ title: "Error", description: "Could not save the plan.", variant: "destructive" });
+      console.error("Failed to save plan:", error);
     }
-    setIsEditing(false);
-    setSelectedPlan(null);
   };
+
 
   const handleFieldChange = (field: keyof Plan, value: any) => {
     if (selectedPlan) {
