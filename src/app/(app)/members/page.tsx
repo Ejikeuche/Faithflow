@@ -57,6 +57,7 @@ const emptyMember: Omit<Member, 'id' | 'createdAt'> = {
     email: "",
     role: "Member",
     joined: new Date().toISOString().split("T")[0],
+    dob: "",
     phone: "",
     address: ""
 };
@@ -154,11 +155,10 @@ export default function MembersPage() {
         }
     };
 
-    const handleFieldChange = (field: keyof Omit<Member, 'id' | 'createdAt' | 'joined'>, value: string) => {
+    const handleFieldChange = (field: keyof Omit<Member, 'id' | 'createdAt' | 'joined' | 'dob'>, value: string) => {
       if (selectedMember) {
         setSelectedMember(prev => {
           if (!prev) return null;
-          // Create a new object to ensure re-render
           const newDetails = { ...prev };
           (newDetails as any)[field] = value;
           return newDetails;
@@ -166,27 +166,35 @@ export default function MembersPage() {
       }
     };
     
-    const handleJoinedDateChange = (value: string) => {
+    const handleDateChange = (field: 'joined' | 'dob', value: string) => {
        if (selectedMember) {
-            setSelectedMember(prev => prev ? { ...prev, joined: value } : null);
+            setSelectedMember(prev => prev ? { ...prev, [field]: value } : null);
         }
     }
     
-    const parseDate = (dateString: string) => {
-        if (!dateString) return new Date();
+    const parseDate = (dateString: string | undefined) => {
+        if (!dateString) return null;
         const parts = dateString.split('-');
         if (parts.length === 3) {
             const [year, month, day] = parts.map(Number);
             return new Date(year, month - 1, day);
         }
-        return new Date(dateString);
+        const date = new Date(dateString);
+        return isValid(date) ? date : null;
     }
     
     const handleViewProfile = (member: Member) => {
         const joinedDate = parseDate(member.joined);
+        const dob = parseDate(member.dob);
+
+        let description = `Email: ${member.email}, Role: ${member.role}, Joined: ${joinedDate ? format(joinedDate, "PPP") : 'N/A'}`;
+        if (dob) {
+            description += `, DOB: ${format(dob, "PPP")}`;
+        }
+
         toast({
             title: `Profile: ${member.name}`,
-            description: `Email: ${member.email}, Role: ${member.role}, Joined: ${isValid(joinedDate) ? format(joinedDate, "PPP") : 'Invalid Date'}`
+            description: description
         });
     };
 
@@ -248,7 +256,7 @@ export default function MembersPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      {isValid(joinedDate) ? format(joinedDate, "PPP") : 'Invalid Date'}
+                      {joinedDate ? format(joinedDate, "PPP") : 'Invalid Date'}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
@@ -308,7 +316,11 @@ export default function MembersPage() {
                   </div>
                    <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="joined" className="text-right">Joined</Label>
-                      <Input id="joined" type="date" value={selectedMember?.joined || ''} onChange={e => handleJoinedDateChange(e.target.value)} className="col-span-3" />
+                      <Input id="joined" type="date" value={selectedMember?.joined || ''} onChange={e => handleDateChange('joined', e.target.value)} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="dob" className="text-right">Date of Birth</Label>
+                      <Input id="dob" type="date" value={selectedMember?.dob || ''} onChange={e => handleDateChange('dob', e.target.value)} className="col-span-3" />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="phone" className="text-right">Phone</Label>
