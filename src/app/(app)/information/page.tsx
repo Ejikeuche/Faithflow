@@ -48,13 +48,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  deleteInformation,
-  archiveInformation,
-} from "@/actions/information-actions";
 import { InformationFormDialog } from "@/components/information-form-dialog";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { collection, getDocs, orderBy, query, doc, deleteDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 
 const toInformationObject = (doc: any): Information => {
     const data = doc.data();
@@ -113,7 +109,7 @@ export default function InformationPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteInformation(id);
+      await deleteDoc(doc(db, "information", id));
       await fetchInformation();
       toast({
         title: "Deleted",
@@ -126,7 +122,11 @@ export default function InformationPage() {
 
   const handleArchive = async (id: string) => {
     try {
-      await archiveInformation(id);
+      const infoRef = doc(db, "information", id);
+      await updateDoc(infoRef, {
+        status: 'archived',
+        updatedAt: serverTimestamp()
+      });
       await fetchInformation();
       toast({
         title: "Archived",

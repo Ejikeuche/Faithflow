@@ -16,7 +16,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import type { Information } from "@/lib/types";
-import { addInformation, updateInformation } from "@/actions/information-actions";
+import { db } from "@/lib/firebase";
+import { addDoc, collection, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 
 const emptyInformation: Omit<Information, "id" | "createdAt"> = {
   title: "",
@@ -58,14 +59,22 @@ export function InformationFormDialog({ isOpen, onOpenChange, item, onSave }: In
 
     try {
       if (item) { // Editing existing item
-        const itemToUpdate = { ...formData, id: item.id };
-        await updateInformation(itemToUpdate);
+        const itemRef = doc(db, "information", item.id);
+        const { id, ...dataToUpdate } = formData;
+        await updateDoc(itemRef, {
+            ...dataToUpdate,
+            updatedAt: serverTimestamp()
+        });
+
         toast({
           title: "Success",
           description: "Information has been updated.",
         });
       } else { // Creating new item
-        await addInformation(formData);
+        await addDoc(collection(db, "information"), {
+            ...formData,
+            createdAt: serverTimestamp()
+        });
         toast({
           title: "Success",
           description: "New information has been published.",
