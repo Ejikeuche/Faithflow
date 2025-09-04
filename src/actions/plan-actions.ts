@@ -1,11 +1,11 @@
 
 'use server';
 
-import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, updateDoc, serverTimestamp, writeBatch, query, orderBy } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import type { Plan } from '@/lib/types';
 
-const plansCollection = collection(db, 'plans');
+const plansCollection = adminDb.collection('plans');
 
 const initialPlans: Omit<Plan, 'id'>[] = [
   {
@@ -26,27 +26,27 @@ const initialPlans: Omit<Plan, 'id'>[] = [
 ];
 
 // Helper function to convert Firestore doc to Plan object
-const toPlanObject = (doc: any): Plan => {
+const toPlanObject = (doc: FirebaseFirestore.DocumentSnapshot): Plan => {
     const data = doc.data();
     return {
         id: doc.id,
-        name: data.name,
-        memberLimit: data.memberLimit,
-        price: data.price,
+        name: data?.name,
+        memberLimit: data?.memberLimit,
+        price: data?.price,
     };
 };
 
 // Initialize Plans
 async function initializePlans(): Promise<Plan[]> {
-    const batch = writeBatch(db);
+    const batch = adminDb.batch();
     const createdPlans: Plan[] = [];
 
     const planIds = ["basic", "premium", "premium-plus"];
 
     initialPlans.forEach((planData, index) => {
         const planId = planIds[index];
-        const docRef = doc(db, 'plans', planId);
-        const data = { ...planData, createdAt: serverTimestamp() };
+        const docRef = adminDb.collection('plans').doc(planId);
+        const data = { ...planData, createdAt: FieldValue.serverTimestamp() };
         batch.set(docRef, data);
         createdPlans.push({ ...planData, id: planId });
     });
@@ -58,7 +58,7 @@ async function initializePlans(): Promise<Plan[]> {
 
 // READ
 export async function getPlans(): Promise<Plan[]> {
-  const snapshot = await getDocs(query(plansCollection));
+  const snapshot = await plansCollection.get();
   if (snapshot.empty) {
       // If no plans exist, initialize them
       return await initializePlans();
@@ -71,11 +71,12 @@ export async function getPlans(): Promise<Plan[]> {
 
 // UPDATE
 export async function updatePlan(planData: Plan): Promise<Plan> {
-  const planRef = doc(db, 'plans', planData.id);
   const { id, ...dataToUpdate } = planData;
-  await updateDoc(planRef, {
+  const planRef = plansCollection.doc(id);
+
+  await planRef.update({
       ...dataToUpdate,
-      updatedAt: serverTimestamp()
+      updatedAt: FieldValue.serverTimestamp()
   });
   return planData;
 }

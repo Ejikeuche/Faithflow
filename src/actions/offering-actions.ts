@@ -1,26 +1,13 @@
 
 'use server';
 
-import { db } from '@/lib/firebase';
-import { 
-    collection, 
-    getDocs, 
-    addDoc, 
-    doc, 
-    updateDoc, 
-    deleteDoc, 
-    serverTimestamp, 
-    query, 
-    orderBy, 
-    getDoc, 
-    Timestamp,
-    writeBatch
-} from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import type { Offering } from '@/lib/types';
 
-const offeringsCollection = collection(db, 'offerings');
+const offeringsCollection = adminDb.collection('offerings');
 
-const toOfferingObject = (doc: any): Offering => {
+const toOfferingObject = (doc: FirebaseFirestore.DocumentSnapshot): Offering => {
     const data = doc.data();
     
     // Helper to safely convert timestamp to ISO string
@@ -36,34 +23,34 @@ const toOfferingObject = (doc: any): Offering => {
 
     return {
         id: doc.id,
-        name: data.name,
-        email: data.email,
-        amount: data.amount,
-        date: data.date,
-        type: data.type,
-        createdAt: toISOString(data.createdAt),
+        name: data?.name,
+        email: data?.email,
+        amount: data?.amount,
+        date: data?.date,
+        type: data?.type,
+        createdAt: toISOString(data?.createdAt),
     };
 };
 
 // CREATE
 export async function addOffering(offeringData: Omit<Offering, 'id' | 'createdAt'>): Promise<Offering> {
-  const docRef = await addDoc(offeringsCollection, {
+  const docRef = await offeringsCollection.add({
     ...offeringData,
-    createdAt: serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
   });
-  const newDoc = await getDoc(docRef);
+  const newDoc = await docRef.get();
   return toOfferingObject(newDoc);
 }
 
 // CREATE BATCH
 export async function addBatchOfferings(offeringsData: Omit<Offering, 'id' | 'createdAt'>[]): Promise<void> {
-    const batch = writeBatch(db);
+    const batch = adminDb.batch();
 
     offeringsData.forEach(offering => {
-        const docRef = doc(offeringsCollection);
+        const docRef = offeringsCollection.doc();
         batch.set(docRef, {
             ...offering,
-            createdAt: serverTimestamp()
+            createdAt: FieldValue.serverTimestamp()
         });
     });
 
@@ -73,25 +60,26 @@ export async function addBatchOfferings(offeringsData: Omit<Offering, 'id' | 'cr
 
 // READ
 export async function getOfferings(): Promise<Offering[]> {
-  const q = query(offeringsCollection, orderBy("date", "desc"));
-  const snapshot = await getDocs(q);
+  const q = offeringsCollection.orderBy("date", "desc");
+  const snapshot = await q.get();
   return snapshot.docs.map(toOfferingObject);
 }
 
 // UPDATE
 export async function updateOffering(offeringData: Omit<Offering, 'createdAt'>): Promise<Offering> {
-  const offeringRef = doc(db, 'offerings', offeringData.id);
   const { id, ...dataToUpdate } = offeringData;
-  await updateDoc(offeringRef, {
+  const offeringRef = offeringsCollection.doc(id);
+
+  await offeringRef.update({
       ...dataToUpdate,
-      updatedAt: serverTimestamp()
+      updatedAt: FieldValue.serverTimestamp()
   });
-  const updatedDoc = await getDoc(offeringRef);
+  const updatedDoc = await offeringRef.get();
   return toOfferingObject(updatedDoc);
 }
 
 // DELETE
 export async function deleteOffering(offeringId: string): Promise<void> {
-    const offeringRef = doc(db, 'offerings', offeringId);
-    await deleteDoc(offeringRef);
+    const offeringRef = offeringsCollection.doc(offeringId);
+    await offeringRef.delete();
 }
