@@ -47,11 +47,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { format, isValid } from "date-fns";
 import type { Member } from "@/lib/types";
-import { addMember, updateMember, deleteMember } from "@/actions/member-actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUser } from "@/hooks/use-user";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { collection, getDocs, orderBy, query, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 
 const emptyMember: Omit<Member, 'id' | 'createdAt'> = {
     name: "",
@@ -113,8 +112,8 @@ export default function MembersPage() {
     
     const handleDelete = async (memberId: string) => {
         try {
-            await deleteMember(memberId);
-            setMembers(members.filter(m => m.id !== memberId));
+            await deleteDoc(doc(db, "members", memberId));
+            await fetchMembers();
             toast({ title: "Member Deleted", description: "The member has been removed from the list." });
         } catch(error) {
             console.error("Failed to delete member:", error);
@@ -131,15 +130,22 @@ export default function MembersPage() {
         try {
             if ('id' in selectedMember && selectedMember.id) {
                 // Editing existing member
-                const updated = await updateMember(selectedMember as Omit<Member, 'createdAt'>);
-                await fetchMembers(); // Refetch
-                toast({ title: "Member Updated", description: `${updated.name}'s details have been updated.` });
+                const memberRef = doc(db, "members", selectedMember.id);
+                const { id, ...dataToUpdate } = selectedMember;
+                await updateDoc(memberRef, {
+                    ...dataToUpdate,
+                    updatedAt: serverTimestamp()
+                });
+                toast({ title: "Member Updated", description: `${selectedMember.name}'s details have been updated.` });
             } else {
                 // Adding new member
-                const newMember = await addMember(selectedMember as Omit<Member, 'id' | 'createdAt'>);
-                await fetchMembers(); // Refetch
-                toast({ title: "Member Added", description: `${newMember.name} has been added.` });
+                await addDoc(collection(db, "members"), {
+                    ...selectedMember,
+                    createdAt: serverTimestamp()
+                });
+                toast({ title: "Member Added", description: `${selectedMember.name} has been added.` });
             }
+            await fetchMembers(); // Refetch
             setIsDialogOpen(false);
             setSelectedMember(null);
         } catch (error) {
