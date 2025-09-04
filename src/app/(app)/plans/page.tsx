@@ -112,10 +112,11 @@ export default function PlansPage() {
         throw new Error("Stripe.js not loaded");
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
       console.error("Error creating checkout session:", error);
       toast({
         title: "Error",
-        description: "Could not redirect to payment. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
       setIsRedirecting(false);
