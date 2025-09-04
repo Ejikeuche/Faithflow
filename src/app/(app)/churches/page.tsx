@@ -33,11 +33,10 @@ import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import type { Church } from "@/lib/types";
-import { addChurch, updateChurch } from "@/actions/church-actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUser } from "@/hooks/use-user";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { collection, getDocs, orderBy, query, addDoc, updateDoc, doc, serverTimestamp } from "firebase/firestore";
 
 const emptyChurch: Omit<Church, 'id' | 'createdAt'> = {
   name: "",
@@ -107,11 +106,19 @@ export default function ChurchesPage() {
     try {
       if ('id' in selectedChurch && selectedChurch.id) {
         // Editing existing church
-        await updateChurch(selectedChurch as Omit<Church, 'createdAt'>);
+        const churchRef = doc(db, "churches", selectedChurch.id);
+        const { id, ...dataToUpdate } = selectedChurch;
+        await updateDoc(churchRef, {
+            ...dataToUpdate,
+            updatedAt: serverTimestamp()
+        });
         toast({ title: "Church Updated", description: `${selectedChurch.name} has been updated.` });
       } else {
         // Adding new church
-        await addChurch(selectedChurch as Omit<Church, 'id' | 'createdAt'>);
+         await addDoc(collection(db, "churches"), {
+            ...(selectedChurch as Omit<Church, 'id' | 'createdAt'>),
+            createdAt: serverTimestamp()
+        });
         toast({ title: "Church Added", description: `${selectedChurch.name} has been added.` });
       }
       fetchChurches();
