@@ -102,13 +102,13 @@ export default function DashboardPage() {
                 }
               })
               .sort((a, b) => {
-                 const dateA = parseISO(a.dob!);
-                 const dateB = parseISO(b.dob!);
+                 if (!a.dob || !b.dob) return 0;
+                 const dateA = parseISO(a.dob);
+                 const dateB = parseISO(b.dob);
                  return dateA.getDate() - dateB.getDate();
               });
             setUpcomingBirthdays(birthdays);
         }
-
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
       } finally {
@@ -335,7 +335,7 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>Attendance Analytics</CardTitle>
               <CardDescription>Average attendance over the last 6 months.</CardDescription>
-            </Header>
+            </CardHeader>
             <CardContent>
               <ChartContainer config={attendanceChartConfig} className="h-[250px] w-full">
                 <BarChart accessibilityLayer data={chartData}>
@@ -369,12 +369,12 @@ export default function DashboardPage() {
                 <CardHeader>
                     <CardTitle>Church Membership</CardTitle>
                     <CardDescription>Membership numbers across all churches.</CardDescription>
-                </Header>
+                </CardHeader>
                 <CardContent>
                     <ChartContainer config={churchMembershipChartConfig} className="h-[350px] w-full">
                         <BarChart accessibilityLayer data={churches} layout="vertical" margin={{ left: 10 }}>
                             <CartesianGrid horizontal={false} />
-                            <XAxis dataKey="members" type="number" hide />
+                            <XAxis type="number" hide />
                             <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={10} width={120} />
                             <ChartTooltip
                                 cursor={false}
@@ -393,7 +393,7 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle>Welcome to FaithFlow</CardTitle>
             <CardDescription>Your all-in-one solution for church management.</CardDescription>
-          </Header>
+          </CardHeader>
           <CardContent>
              <div className="relative aspect-video w-full">
                 <Image src="https://picsum.photos/1200/600" alt="Church community" fill className="rounded-md object-cover" data-ai-hint="church community" />
@@ -404,3 +404,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
