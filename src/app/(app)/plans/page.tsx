@@ -27,8 +27,19 @@ import { useToast } from "@/hooks/use-toast";
 import { createCheckoutSession } from "@/actions/create-checkout-session";
 import { getStripe } from "@/lib/stripe-client";
 import { Loader2 } from "lucide-react";
-import { getPlans, updatePlan } from "@/actions/plan-actions";
 import { Skeleton } from "@/components/ui/skeleton";
+import { db } from "@/lib/firebase";
+import { collection, doc, getDocs, setDoc } from "firebase/firestore";
+
+const toPlanObject = (doc: any): Plan => {
+  const data = doc.data();
+  return {
+      id: doc.id,
+      name: data?.name,
+      memberLimit: data?.memberLimit,
+      price: data?.price,
+  };
+};
 
 export default function PlansPage() {
   const { user } = useUser();
@@ -43,10 +54,36 @@ export default function PlansPage() {
 
   useEffect(() => {
     const fetchPlans = async () => {
+      if (!user) return;
       setIsLoading(true);
       try {
-        const fetchedPlans = await getPlans();
+        const plansCollection = collection(db, 'plans');
+        const snapshot = await getDocs(plansCollection);
+        
+        let fetchedPlans: Plan[] = [];
+        if (snapshot.empty) {
+          // If no plans exist, initialize them
+          // This should ideally be a backend function, but for demo purposes we can do it here.
+          const initialPlans: Omit<Plan, 'id'>[] = [
+            { name: "Basic", memberLimit: { min: 0, max: 100 }, price: 29 },
+            { name: "Premium", memberLimit: { min: 101, max: 250 }, price: 79 },
+            { name: "Premium Plus", memberLimit: { min: 251, max: null }, price: 149 },
+          ];
+          const planIds = ["basic", "premium", "premium-plus"];
+          
+          for(let i = 0; i < initialPlans.length; i++) {
+              const planId = planIds[i];
+              const planData = initialPlans[i];
+              await setDoc(doc(db, "plans", planId), planData);
+              fetchedPlans.push({ ...planData, id: planId });
+          }
+          fetchedPlans.sort((a,b) => a.memberLimit.min - b.memberLimit.min);
+        } else {
+           fetchedPlans = snapshot.docs.map(toPlanObject);
+           fetchedPlans.sort((a, b) => a.memberLimit.min - b.memberLimit.min);
+        }
         setPlans(fetchedPlans);
+
       } catch (error) {
         console.error("Failed to fetch plans:", error);
         toast({ title: "Error", description: "Could not fetch plans.", variant: "destructive" });
@@ -55,7 +92,7 @@ export default function PlansPage() {
       }
     };
     fetchPlans();
-  }, [toast]);
+  }, [user, toast]);
 
   const handleEditClick = (plan: Plan) => {
     setSelectedPlan({ ...plan });
@@ -88,11 +125,12 @@ export default function PlansPage() {
   const handleSave = async () => {
     if (selectedPlan) {
       try {
-        const updatedPlan = await updatePlan(selectedPlan);
+        const { id, ...planData } = selectedPlan;
+        await setDoc(doc(db, "plans", id), planData, { merge: true });
         setPlans(
-          plans.map((p) => (p.id === updatedPlan.id ? updatedPlan : p))
+          plans.map((p) => (p.id === id ? selectedPlan : p))
         );
-        toast({ title: "Plan Saved", description: `${updatedPlan.name} has been updated.`});
+        toast({ title: "Plan Saved", description: `${selectedPlan.name} has been updated.`});
       } catch (error) {
         toast({ title: "Error", description: "Could not save the plan.", variant: "destructive" });
         console.error("Failed to save plan:", error);
