@@ -68,15 +68,11 @@ export function DashboardClient({ initialChurches }: DashboardClientProps) {
       if (user.role !== 'superuser') {
         setIsLoading(true);
       } else {
+        setChurches(initialChurches);
         setIsLoading(false); // For superuser, church data is already loaded
       }
 
       try {
-        // Superuser doesn't need to fetch churches on the client
-        if (user.role === 'superuser') {
-            setChurches(initialChurches);
-        }
-
         // All roles need to fetch their respective data that isn't pre-loaded
         const promises = [
             getDocs(query(collection(db, 'members'), orderBy("createdAt", "desc"))),
