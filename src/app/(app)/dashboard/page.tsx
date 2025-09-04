@@ -91,8 +91,6 @@ export default function DashboardPage() {
             const birthdays = membersData
               .filter(member => {
                 if (!member.dob) return false;
-                // The DOB is stored as YYYY-MM-DD, which parseISO handles correctly
-                // even without a time component by treating it as UTC midnight.
                 const birthDate = parseISO(member.dob);
                 return getMonth(birthDate) === currentMonth;
               })
@@ -110,6 +108,7 @@ export default function DashboardPage() {
         setIsLoading(false);
       }
     };
+    
     if (user) {
         fetchData();
     }
@@ -243,7 +242,8 @@ export default function DashboardPage() {
                     {upcomingBirthdays.length > 0 ? (
                     <ul className="space-y-3">
                         {upcomingBirthdays.map(member => {
-                            const birthDate = parseISO(member.dob!);
+                            if (!member.dob) return null;
+                            const birthDate = parseISO(member.dob);
                             return (
                             <li key={member.id} className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
