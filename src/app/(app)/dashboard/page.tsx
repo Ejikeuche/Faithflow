@@ -19,7 +19,7 @@ import { subMonths, format, startOfMonth, getMonth, parseISO } from 'date-fns';
 import { db } from "@/lib/firebase";
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getChurches as getChurchesAction } from "@/actions/church-actions";
+import { getChurches } from "@/actions/church-actions";
 
 
 const toMemberObject = (doc: any): Member => ({ id: doc.id, ...doc.data() } as Member);
@@ -64,36 +64,32 @@ export default function DashboardPage() {
       
       setIsLoading(true);
       try {
-        const promises = [
-            getDocs(query(collection(db, 'members'), orderBy("createdAt", "desc"))),
-            getDocs(query(collection(db, 'offerings'), orderBy("date", "desc"))),
-            getDocs(query(collection(db, 'attendance'), orderBy("date", "desc"))),
-        ];
-
-        if (user.role === 'superuser') {
-            promises.push(getChurchesAction());
-        } else {
-             promises.push(getDocs(query(collection(db, 'churches'), orderBy("createdAt", "desc"))));
-        }
+        const membersPromise = getDocs(query(collection(db, 'members'), orderBy("createdAt", "desc")));
+        const offeringsPromise = getDocs(query(collection(db, 'offerings'), orderBy("date", "desc")));
+        const attendancePromise = getDocs(query(collection(db, 'attendance'), orderBy("date", "desc")));
         
+        // Use server action for superuser, client-side fetch for others
+        const churchesPromise = user.role === 'superuser' 
+            ? getChurches()
+            : getDocs(query(collection(db, 'churches'), orderBy("createdAt", "desc")));
+
         const [
           membersSnapshot,
           offeringsSnapshot,
           attendanceSnapshot,
           churchesResult,
-        ] = await Promise.all(promises);
+        ] = await Promise.all([membersPromise, offeringsPromise, attendancePromise, churchesPromise]);
         
         const membersData = membersSnapshot.docs.map(toMemberObject);
         const offeringsData = offeringsSnapshot.docs.map(toOfferingObject);
         const attendanceData = attendanceSnapshot.docs.map(toAttendanceRecordObject);
         
         let churchesData: ChurchType[];
-        if (Array.isArray(churchesResult)) {
+        if (Array.isArray(churchesResult)) { // Result from server action
             churchesData = churchesResult;
-        } else {
+        } else { // Result from client-side getDocs
             churchesData = churchesResult.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as ChurchType));
         }
-
 
         setMembers(membersData);
         setOfferings(offeringsData);
@@ -420,5 +416,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
