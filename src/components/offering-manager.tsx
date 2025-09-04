@@ -36,8 +36,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { Offering } from "@/lib/types";
 import { format, isValid } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { addOffering, updateOffering, deleteOffering } from "@/actions/offering-actions";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
+import { db } from "@/lib/firebase";
+import { addDoc, collection, doc, serverTimestamp, updateDoc, deleteDoc } from "firebase/firestore";
 
 const emptyOffering: Omit<Offering, 'id' | 'createdAt'> = {
   name: "",
@@ -70,8 +71,8 @@ export function OfferingManager({ offerings, setOfferings, refetchOfferings }: O
   
   const handleDelete = async (offeringId: string) => {
     try {
-      await deleteOffering(offeringId);
-      setOfferings(prev => prev.filter(o => o.id !== offeringId));
+      await deleteDoc(doc(db, "offerings", offeringId));
+      await refetchOfferings();
       toast({ title: "Offering Deleted", description: "The offering record has been removed." });
     } catch (error) {
       console.error("Failed to delete offering:", error);
@@ -88,11 +89,19 @@ export function OfferingManager({ offerings, setOfferings, refetchOfferings }: O
     try {
       if ('id' in selectedOffering && selectedOffering.id) {
         // Editing
-        await updateOffering(selectedOffering as Omit<Offering, 'createdAt'>);
+        const offeringRef = doc(db, "offerings", selectedOffering.id);
+        const { id, ...dataToUpdate } = selectedOffering;
+        await updateDoc(offeringRef, {
+            ...dataToUpdate,
+            updatedAt: serverTimestamp()
+        });
         toast({ title: "Offering Updated", description: `The record has been updated.` });
       } else {
         // Adding
-        await addOffering(selectedOffering as Omit<Offering, 'id' | 'createdAt'>);
+        await addDoc(collection(db, "offerings"), {
+            ...selectedOffering,
+            createdAt: serverTimestamp()
+        });
         toast({ title: "Offering Added", description: `A new offering record has been added.` });
       }
       await refetchOfferings();
