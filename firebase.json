@@ -10,14 +10,9 @@
       "**/.*",
       "**/node_modules/**"
     ],
-    "rewrites": [
-      {
-        "source": "**",
-        "apphosting": {
-          "backendId": "faithflow-backend",
-          "region": "us-central1"
-        }
-      }
-    ]
+    "frameworksBackend": {
+      "id": "faithflow-backend",
+      "region": "us-central1"
+    }
   }
 }
