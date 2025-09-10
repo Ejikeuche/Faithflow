@@ -13,6 +13,16 @@
     "frameworksBackend": {
       "id": "faithflow-backend",
       "region": "us-central1"
-    }
+    },
+    "rewrites": [
+      {
+        "source": "**",
+        "apphosting": {
+          "backendId": "faithflow-backend",
+          "region": "us-central1"
+        }
+      }
+    ]
   }
 }
+
